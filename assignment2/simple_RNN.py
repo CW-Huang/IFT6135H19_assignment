@@ -7,6 +7,9 @@ import math, copy, time
 from torch.autograd import Variable
 import matplotlib.pyplot as plt
 
+# TODO: Generalize to multi-layers
+
+
 # NOTE ==============================================
 #
 # Fill in code for every method which has a TODO
@@ -48,6 +51,16 @@ class RNN(nn.Module): # Implement a stacked vanilla RNN with Tanh nonlinearities
                   Do not apply dropout on recurrent connections.
     """
     super(RNN, self).__init__()
+    self.hidden_size = hidden_size
+    self.seq_len = seq_len
+    self.num_layers = num_layers
+
+    self.i2h = nn.Linear(emb_size, hidden_size)
+    self.h2o = nn.Linear(hidden_size, vocab_size)
+    self.h2h = nn.Linear(hidden_size, hidden_size)
+    self.activation = nn.Tanh()
+    self.dropout = nn.Dropout(dp_keep_prob)
+    self.softmax = nn.LogSoftmax(dim=1)
 
     # TODO ========================
     # Initialization of the parameters of the recurrent and fc layers.
@@ -68,6 +81,7 @@ class RNN(nn.Module): # Implement a stacked vanilla RNN with Tanh nonlinearities
     # TODO ========================
     # Initialize all the weights uniformly in the range [-0.1, 0.1]
     # and all the biases to 0 (in place)
+    return
 
   def init_hidden(self):
     # TODO ========================
@@ -113,6 +127,16 @@ class RNN(nn.Module): # Implement a stacked vanilla RNN with Tanh nonlinearities
               if you are curious.
                     shape: (num_layers, batch_size, hidden_size)
     """
+    # Initialize hidden layer # TODO: move outside
+    #hidden = self.init_hidden()
+    logits = []
+    h1 = hidden
+    for i in range(inputs.size(0)):
+        a = self.i2h(i)
+        h = self.tanh(a + h1)
+        o = self.h2o(h0)
+        h1 = self.h2h(h0)
+    logits.append(o)
     return logits.view(self.seq_len, self.batch_size, self.vocab_size), hidden
 
   def generate(self, input, hidden, generated_seq_len):
