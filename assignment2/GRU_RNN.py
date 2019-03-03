@@ -50,14 +50,14 @@ class GRU_cell(nn.Module): # Implement a stacked GRU RNN
     self.U_h_tilde = nn.Parameter(torch.FloatTensor(hidden_size,hidden_size))
     self.bias_rzh = nn.Parameter(torch.FloatTensor(3*hidden_size))
 
-    self.init_weights_uniform
+    self.init_weights_uniform()
     self.sigmoid = nn.Sigmoid()
     self.tanh = nn.Tanh()
 
   def init_weights_uniform(self):
     # Initialize all the weights uniformly in the range [-0.1, 0.1]
     # and all the biases to 0 (in place)
-    stdv = 1.0 / math.sqrt(self.hidden_size)
+    stdv = 0.1
     for weight in self.parameters():
       weight.data.uniform_(-stdv, stdv)
 
@@ -122,11 +122,6 @@ class GRU(nn.Module): # Implement a stacked GRU RNN
     # for Pytorch to recognize these parameters as belonging to this nn.Module
     # and compute their gradients automatically. You're not obligated to use the
     # provided clones function.
-  def init_weights_uniform(self):
-    # TODO ========================
-    # Initialize all the weights uniformly in the range [-0.1, 0.1]
-    # and all the biases to 0 (in place)
-    pass
 
   def init_hidden(self):
     # TODO ========================
