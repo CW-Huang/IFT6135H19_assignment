@@ -149,7 +149,7 @@ class RNN(nn.Module): # Implement a stacked vanilla RNN with Tanh nonlinearities
             h_previous_layer = self.activation(self.dropout[0](self.fc[l](h_recurrent)))
             # Keep the ref for next ts
             h_next_ts.append(h_recurrent)
-        h_previous_ts = torch.stack(n_next_ts)
+        h_previous_ts = torch.stack(h_next_ts)
         logits.append(self.decode(h_previous_layer))
     return torch.stack(logits), h_next_ts
 
