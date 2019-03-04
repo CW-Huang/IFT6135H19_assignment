@@ -94,7 +94,7 @@ class GRU(nn.Module): # Implement a stacked GRU RNN
   Follow the same instructions as for RNN (above), but use the equations for
   GRU, not Vanilla RNN.
   """
-  def __init__(self, emb_size, hidden_size, seq_len, batch_size, vocab_size, num_layers, dp_keep_prob):
+  def __init__(self, emb_size, hidden_size, seq_len, batch_size, vocab_size, num_layers, dp_keep_prob=0.1):
     """
     emb_size:     The number of units in the input embeddings
     hidden_size:  The number of hidden units per layer
@@ -115,6 +115,10 @@ class GRU(nn.Module): # Implement a stacked GRU RNN
     self.num_layers = num_layers
     self.dp_keep_prob = dp_keep_prob
     self.decode = nn.Linear(hidden_size,vocab_size)
+    self.tanh = nn.Tanh()
+    self.fc = clones(nn.Linear(hidden_size, emb_size), num_layers)
+    self.dropout = clones(nn.Dropout(dp_keep_prob), num_layers)
+
 
     # The size of the input to the first GRU cell is of size embedding size.
     # The size of the inputs to all other GRU cells is of size hidden size.
@@ -179,19 +183,28 @@ class GRU(nn.Module): # Implement a stacked GRU RNN
               if you are curious.
                     shape: (num_layers, batch_size, hidden_size)
     """
+    h_previous_ts = hidden
+    h_next_ts = []
     logits = []
     embeddings = self.embedding(inputs) #(seq_len, batch_size, emb_size)
     for t in range(self.seq_len):
       input = embeddings[t] #the very first input to a GRU cell is the embedding (#embeddings == #seq_len)
       for h_index in range(self.num_layers):
-        h = self.GRU_cells[h_index].forward(input,hidden[h_index])
-        input = h # updating the input with output of the GRU cell, will be used as input to GRU cell at next timesept (vertically up the stacks)
-        hidden[h_index]=h # updating/overriding the hidden layer with output of GRU cell, will be used as input to GRU cell at next timestep (horizontally)
+        h_recurrent = self.GRU_cells[h_index].forward(input,h_previous_ts[h_index])
+        input = h_recurrent # will be used as input to GRU cell at next timestep (vertically up the stacks)
+        # Fully connected layer
+        h_previous_layer = self.tanh(self.dropout[0](self.fc[h_index](h_recurrent)))
+        # Keep the ref for next ts
+        h_next_ts.append(h_recurrent)
+      h_previous_ts = torch.stack(h_next_ts)
+      logits.append(self.decode(h_previous_layer))
+
+        #hidden[h_index]=h # updating/overriding the hidden layer with output of GRU cell, will be used as input to GRU cell at next timestep (horizontally)
                           # hidden state of the last cell is accessible here
       #print size of h, should be batch x hidden
-      logits.append(self.decode(h))
+      #logits.append(self.decode(h))
 
-    return torch.stack(logits), hidden
+    return torch.stack(logits), h_next_ts
 
     #return logits.view(self.seq_len, self.batch_size, self.vocab_size), hidden
 
