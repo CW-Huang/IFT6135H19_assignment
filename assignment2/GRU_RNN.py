@@ -45,10 +45,10 @@ class GRU_cell(nn.Module): # Implement a stacked GRU RNN
     self.emb_size = emb_size
     self.hidden_size = hidden_size
 
-    self.W_x = nn.Parameter(torch.FloatTensor(emb_size,3*hidden_size)) #.cuda()
-    self.U_h = nn.Parameter(torch.FloatTensor(hidden_size,2*hidden_size))
-    self.U_h_tilde = nn.Parameter(torch.FloatTensor(hidden_size,hidden_size))
-    self.bias_rzh = nn.Parameter(torch.FloatTensor(3*hidden_size))
+    self.W_x = nn.Parameter(torch.Tensor(emb_size,3*hidden_size))
+    self.U_h = nn.Parameter(torch.Tensor(hidden_size,2*hidden_size))
+    self.U_h_tilde = nn.Parameter(torch.Tensor(hidden_size,hidden_size))
+    self.bias_rzh = nn.Parameter(torch.Tensor(3*hidden_size))
 
     self.init_weights_uniform()
     self.sigmoid = nn.Sigmoid()
@@ -114,7 +114,7 @@ class GRU(nn.Module): # Implement a stacked GRU RNN
     self.vocab_size = vocab_size
     self.num_layers = num_layers
     self.dp_keep_prob = dp_keep_prob
-    self.decoder = nn.Linear(hidden_size,vocab_size)
+    self.decode = nn.Linear(hidden_size,vocab_size)
 
     # The size of the input to the first GRU cell is of size embedding size.
     # The size of the inputs to all other GRU cells is of size hidden size.
@@ -179,8 +179,8 @@ class GRU(nn.Module): # Implement a stacked GRU RNN
               if you are curious.
                     shape: (num_layers, batch_size, hidden_size)
     """
-    embeddings = self.embedding(inputs) #(seq_len, batch_size, emb_size)
     logits = []
+    embeddings = self.embedding(inputs) #(seq_len, batch_size, emb_size)
     for t in range(self.seq_len):
       input = embeddings[t] #the very first input to a GRU cell is the embedding (#embeddings == #seq_len)
       for h_index in range(self.num_layers):
@@ -188,7 +188,8 @@ class GRU(nn.Module): # Implement a stacked GRU RNN
         input = h # updating the input with output of the GRU cell, will be used as input to GRU cell at next timesept (vertically up the stacks)
         hidden[h_index]=h # updating/overriding the hidden layer with output of GRU cell, will be used as input to GRU cell at next timestep (horizontally)
                           # hidden state of the last cell is accessible here
-      logits.append(self.decoder(h))
+      #print size of h, should be batch x hidden
+      logits.append(self.decode(h))
 
     return torch.stack(logits), hidden
 
@@ -223,10 +224,16 @@ class GRU(nn.Module): # Implement a stacked GRU RNN
 
 #used temporarily for testing
 if __name__ == '__main__':
-  gru_cell = GRU_cell(20,30) #(emb,hidden_size)
-  inp = torch.rand(5,20) #(batch_size, emb)
-  hid = torch.zeros(5,30) #(batch_size, hidden_size)
+  # gru_cell = GRU_cell(20,30) #(emb,hidden_size)
+  # inp = torch.rand(5,20) #(batch_size, emb)
+  # hid = torch.zeros(5,30) #(batch_size, hidden_size)
+  #
+  # results = gru_cell.forward(inp,hid)
+  # print(results)
 
-  results = gru_cell.forward(inp,hid)
-  print(results)
+  m = nn.Linear(20, 30)
+  print(m)
+  input = torch.randn(128, 20)
+  output = m(input)
+  print(output.size())
 
