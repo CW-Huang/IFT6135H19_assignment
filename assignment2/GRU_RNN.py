@@ -194,6 +194,8 @@ class GRU(nn.Module): # Implement a stacked GRU RNN
         h_recurrent = self.GRU_cells[h_index].forward(input,h_previous_ts[h_index])
         input = h_recurrent # will be used as input to GRU cell at next timestep (vertically up the stacks)
         # Fully connected layer
+        # TODO
+        # check tanh here
         h_previous_layer = self.tanh(self.dropout[h_index](self.fc[h_index](h_recurrent)))
         # Keep the ref for next ts
         h_next_ts.append(h_recurrent) # will be used as input to GRU cell at next timestep (horizontally)
