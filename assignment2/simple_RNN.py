@@ -59,12 +59,12 @@ class RNN(nn.Module): # Implement a stacked vanilla RNN with Tanh nonlinearities
     self.vocab_size = vocab_size
 
     self.embedding = nn.Embedding(vocab_size, emb_size)
-    self.input_to_hidden = nn.Linear(emb_size, hidden_size)
 
     # N stacked recurrent layers
-    self.recurrent = clones(nn.Linear(hidden_size, hidden_size), num_layers)
-    self.dropout = clones(nn.Dropout(dp_keep_prob), num_layers)
+    self.linear_W = clones(nn.Linear(emb_size, hidden_size), num_layers)
+    self.linear_U = clones(nn.Linear(hidden_size, hidden_size), num_layers)
     self.fc = clones(nn.Linear(hidden_size, emb_size), num_layers)
+    self.dropout = clones(nn.Dropout(dp_keep_prob), num_layers)
     self.activation = nn.Tanh()
 
     self.decode = nn.Linear(hidden_size, vocab_size)
@@ -92,7 +92,6 @@ class RNN(nn.Module): # Implement a stacked vanilla RNN with Tanh nonlinearities
     return
 
   def init_hidden(self):
-    # TODO ========================
     # initialize the hidden states to zero
     """
     This is used for the first mini-batch in an epoch, only.
@@ -135,18 +134,24 @@ class RNN(nn.Module): # Implement a stacked vanilla RNN with Tanh nonlinearities
               if you are curious.
                     shape: (num_layers, batch_size, hidden_size)
     """
+    h_previous_ts = hidden
+    h_next_ts = []
     logits = []
     emb = self.embedding(inputs)
     for i in range(self.seq_len):
-        h_previous_layer = self.input_to_hidden(emb[i])
+        h_previous_layer = emb[i]
         for l in range(self.num_layers):
-            h = self.activation(h_previous_layer + hidden[l])
-            h_previous_layer = self.dropout[l](self.fc[l](h))
-            h1 = self.recurrent[l](h)
-            hidden[l] = h_previous_layer
-        logits.append(self.decode(h1))
-    return torch.stack(logits), hidden
-    #return logits.view(self.seq_len, self.batch_size, self.vocab_size), hidden
+            # Recurrent layer
+            a_W = self.linear_W[l](h_previous_layer)
+            a_U = self.linear_U[l](h_previous_ts[l])
+            h_recurrent = self.activation(a_U + a_W)
+            # Fully connected layer
+            h_previous_layer = self.activation(self.dropout[0](self.fc[l](h_recurrent)))
+            # Keep the ref for next ts
+            h_next_ts.append(h_recurrent)
+        h_previous_ts = torch.stack(n_next_ts)
+        logits.append(self.decode(h_previous_layer))
+    return torch.stack(logits), h_next_ts
 
   def generate(self, input, hidden, generated_seq_len):
     # TODO ========================
