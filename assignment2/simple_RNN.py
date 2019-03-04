@@ -38,7 +38,8 @@ def clones(module, N):
 
 # Problem 1
 class RNN(nn.Module): # Implement a stacked vanilla RNN with Tanh nonlinearities.
-  def __init__(self, emb_size, hidden_size, seq_len, batch_size, vocab_size, num_layers, dp_keep_prob):
+  def __init__(self, emb_size, hidden_size, seq_len, batch_size, vocab_size, num_layers=1, dp_keep_prob=0.1):
+
     """
     emb_size:     The numvwe of units in the input embeddings
     hidden_size:  The number of hidden units per layer
@@ -54,12 +55,19 @@ class RNN(nn.Module): # Implement a stacked vanilla RNN with Tanh nonlinearities
     self.hidden_size = hidden_size
     self.seq_len = seq_len
     self.num_layers = num_layers
+    self.batch_size = batch_size
+    self.vocab_size = vocab_size
 
-    self.i2h = nn.Linear(emb_size, hidden_size)
-    self.h2o = nn.Linear(hidden_size, vocab_size)
-    self.h2h = nn.Linear(hidden_size, hidden_size)
+    self.embedding = nn.Embedding(vocab_size, emb_size)
+    self.input_to_hidden = nn.Linear(emb_size, hidden_size)
+
+    # N stacked recurrent layers
+    self.recurrent = clones(nn.Linear(hidden_size, hidden_size), num_layers)
+    self.dropout = clones(nn.Dropout(dp_keep_prob), num_layers)
+    self.fc = clones(nn.Linear(hidden_size, emb_size), num_layers)
     self.activation = nn.Tanh()
-    self.dropout = nn.Dropout(dp_keep_prob)
+
+    self.decode = nn.Linear(hidden_size, vocab_size)
     self.softmax = nn.LogSoftmax(dim=1)
 
     # TODO ========================
@@ -72,7 +80,7 @@ class RNN(nn.Module): # Implement a stacked vanilla RNN with Tanh nonlinearities
     #
     # To create a variable number of parameter tensors and/or nn.Modules
     # (for the stacked hidden layer), you may need to use nn.ModuleList or the
-    # provided clones function (as opposed to a regular python list), in order
+    # provided clones function (as opposed to a regular python list), in, order
     # for Pytorch to recognize these parameters as belonging to this nn.Module
     # and compute their gradients automatically. You're not obligated to use the
     # provided clones function.
@@ -89,7 +97,7 @@ class RNN(nn.Module): # Implement a stacked vanilla RNN with Tanh nonlinearities
     """
     This is used for the first mini-batch in an epoch, only.
     """
-    return # a parameter tensor of shape (self.num_layers, self.batch_size, self.hidden_size)
+    return torch.zeros(self.num_layers, self.batch_size, self.hidden_size)
 
   def forward(self, inputs, hidden):
     # TODO ========================
@@ -127,17 +135,18 @@ class RNN(nn.Module): # Implement a stacked vanilla RNN with Tanh nonlinearities
               if you are curious.
                     shape: (num_layers, batch_size, hidden_size)
     """
-    # Initialize hidden layer # TODO: move outside
-    #hidden = self.init_hidden()
     logits = []
-    h1 = hidden
-    for i in range(inputs.size(0)):
-        a = self.i2h(i)
-        h = self.tanh(a + h1)
-        o = self.h2o(h0)
-        h1 = self.h2h(h0)
-    logits.append(o)
-    return logits.view(self.seq_len, self.batch_size, self.vocab_size), hidden
+    emb = self.embedding(inputs)
+    for i in range(self.seq_len):
+        h_previous_layer = self.input_to_hidden(emb[i])
+        for l in range(self.num_layers):
+            h = self.activation(h_previous_layer + hidden[l])
+            h_previous_layer = self.dropout[l](self.fc[l](h))
+            h1 = self.recurrent[l](h)
+            hidden[l] = h_previous_layer
+        logits.append(self.decode(h1))
+    return torch.stack(logits), hidden
+    #return logits.view(self.seq_len, self.batch_size, self.vocab_size), hidden
 
   def generate(self, input, hidden, generated_seq_len):
     # TODO ========================
