@@ -42,8 +42,8 @@ class GRU_cell(nn.Module): # Implement a stacked GRU RNN
   """
   def __init__(self, emb_size, hidden_size):
     super(GRU_cell, self).__init__()
-    self.emb_size=emb_size
-    self.hidden_size=hidden_size
+    self.emb_size = emb_size
+    self.hidden_size = hidden_size
 
     self.W_x = nn.Parameter(torch.FloatTensor(emb_size,3*hidden_size)) #.cuda()
     self.U_h = nn.Parameter(torch.FloatTensor(hidden_size,2*hidden_size))
@@ -76,12 +76,12 @@ class GRU_cell(nn.Module): # Implement a stacked GRU RNN
 
     # add batch_size as a dimension to bias since I will be adding the bias below (need the dimensions to match)
     bias_rzh_batch = self.bias_rzh.unsqueeze(0).expand(batch_size, self.bias_rzh.size(0))
-    W_x = torch.addmm(bias_rzh_batch,inputs,self.W_x) #5x90
+    W_x = torch.addmm(bias_rzh_batch,inputs,self.W_x)
     U_h_prev = torch.mm(hidden,self.U_h)
     W_rx, W_zx, W_hx = torch.split(W_x,self.hidden_size, dim=1)
     U_rh, U_zh = torch.split(U_h_prev,self.hidden_size, dim=1)
 
-    r = self.sigmoid(W_rx + U_rh) #(bsXhidden)
+    r = self.sigmoid(W_rx + U_rh)
     z = self.sigmoid(W_zx + U_zh)
     h_tilde = self.tanh(W_hx + torch.mm(r * hidden,self.U_h_tilde))
     h = ((1-z) * hidden) + (z * h_tilde)
@@ -96,7 +96,7 @@ class GRU(nn.Module): # Implement a stacked GRU RNN
   """
   def __init__(self, emb_size, hidden_size, seq_len, batch_size, vocab_size, num_layers, dp_keep_prob):
     """
-    emb_size:     The numvwe of units in the input embeddings
+    emb_size:     The number of units in the input embeddings
     hidden_size:  The number of hidden units per layer
     seq_len:      The length of the input sequences
     vocab_size:   The number of tokens in the vocabulary (10,000 for Penn TreeBank)
@@ -107,8 +107,21 @@ class GRU(nn.Module): # Implement a stacked GRU RNN
                   Do not apply dropout on recurrent connections.
     """
     super(GRU, self).__init__()
+    self.emb_size = emb_size
+    self.hidden_size = hidden_size
+    self.seq_len = seq_len
+    self.batch_size = batch_size
+    self.vocab_size = vocab_size
+    self.num_layers = num_layers
+    self.dp_keep_prob = dp_keep_prob
+    self.decoder = nn.Linear(hidden_size,vocab_size)
 
-    # TODO ========================
+    # The size of the input to the first GRU cell is of size embedding size.
+    # The size of the inputs to all other GRU cells is of size hidden size.
+    # There's one GRU cell per hidden layer
+    self.GRU_cells = [GRU_cell(emb_size if i == 0 else hidden_size, hidden_size) for i in range(num_layers)]
+    self.embedding = nn.Embedding(self.vocab_size, self.emb_size)
+
     # Initialization of the parameters of the recurrent and fc layers.
     # Your implementation should support any number of stacked hidden layers
     # (specified by num_layers), use an input embedding layer, and include fully
@@ -123,12 +136,13 @@ class GRU(nn.Module): # Implement a stacked GRU RNN
     # and compute their gradients automatically. You're not obligated to use the
     # provided clones function.
 
-  def init_hidden(self):
+  def init_hidden(self): #called in main in the epoch loop
     # TODO ========================
     # initialize the hidden states to zero
     """
     This is used for the first mini-batch in an epoch, only.
     """
+
     return # a parameter tensor of shape (self.num_layers, self.batch_size, self.hidden_size)
 
   def forward(self, inputs, hidden):
@@ -167,8 +181,18 @@ class GRU(nn.Module): # Implement a stacked GRU RNN
               if you are curious.
                     shape: (num_layers, batch_size, hidden_size)
     """
-    # TODO ========================
-    return #logits.view(self.seq_len, self.batch_size, self.vocab_size), hidden
+    embeddings = self.embedding(inputs) #(seq_len, batch_size, emb_size)
+    logits = []
+    for t in range(len(self.seq_len)):
+      input = embeddings[t] #the very first input to a GRU cell is the embedding (#embeddings == #seq_len)
+      for h_index in range(self.num_layers):
+        h = self.GRU_cells[h_index].forward(input,hidden[h_index])
+        input = h # updating the input with output of the GRU cell, will be used as input to GRU cell at next timesept (vertically up the stacks)
+        hidden[h_index]=h # updating the hidden layer with output of GRU cell, will be used as input to GRU cell at next timestep (horizontally)
+        #hidden state of the last cell is assecbile here
+      logits.append(self.decode(h))
+
+    return logits.view(self.seq_len, self.batch_size, self.vocab_size), hidden
 
   def generate(self, input, hidden, generated_seq_len): #generate next work using the GRU
     # TODO ========================
