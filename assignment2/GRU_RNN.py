@@ -114,6 +114,7 @@ class GRU(nn.Module): # Implement a stacked GRU RNN
     self.vocab_size = vocab_size
     self.num_layers = num_layers
     self.dp_keep_prob = dp_keep_prob
+
     self.decode = nn.Linear(hidden_size,vocab_size)
     self.tanh = nn.Tanh()
     self.fc = clones(nn.Linear(hidden_size, emb_size), num_layers)
@@ -123,6 +124,7 @@ class GRU(nn.Module): # Implement a stacked GRU RNN
     # The size of the input to the first GRU cell is of size embedding size.
     # The size of the inputs to all other GRU cells is of size hidden size.
     # There's one GRU cell per hidden layer
+    # TODO check copy here
     self.GRU_cells = [GRU_cell(emb_size if i == 0 else hidden_size, hidden_size) for i in range(num_layers)]
     self.embedding = nn.Embedding(self.vocab_size, self.emb_size)
 
@@ -148,7 +150,6 @@ class GRU(nn.Module): # Implement a stacked GRU RNN
     return torch.zeros(self.num_layers, self.batch_size, self.hidden_size)# a parameter tensor of shape (self.num_layers, self.batch_size, self.hidden_size)
 
   def forward(self, inputs, hidden):
-    # TODO ========================
     # Compute the forward pass, using a nested python for loops.
     # The outer for loop should iterate over timesteps, and the
     # inner for loop should iterate over hidden layers of the stack.
@@ -193,16 +194,13 @@ class GRU(nn.Module): # Implement a stacked GRU RNN
         h_recurrent = self.GRU_cells[h_index].forward(input,h_previous_ts[h_index])
         input = h_recurrent # will be used as input to GRU cell at next timestep (vertically up the stacks)
         # Fully connected layer
-        h_previous_layer = self.tanh(self.dropout[0](self.fc[h_index](h_recurrent)))
+        h_previous_layer = self.tanh(self.dropout[h_index](self.fc[h_index](h_recurrent)))
         # Keep the ref for next ts
-        h_next_ts.append(h_recurrent)
+        h_next_ts.append(h_recurrent) # will be used as input to GRU cell at next timestep (horizontally)
       h_previous_ts = torch.stack(h_next_ts)
       logits.append(self.decode(h_previous_layer))
 
-        #hidden[h_index]=h # updating/overriding the hidden layer with output of GRU cell, will be used as input to GRU cell at next timestep (horizontally)
-                          # hidden state of the last cell is accessible here
-      #print size of h, should be batch x hidden
-      #logits.append(self.decode(h))
+      #hidden[h_index]=h # updating/overriding the hidden layer with output of GRU cell -> problem because can't backprop on this
 
     return torch.stack(logits), h_next_ts
 
