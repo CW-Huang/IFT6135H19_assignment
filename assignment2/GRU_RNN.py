@@ -137,13 +137,11 @@ class GRU(nn.Module): # Implement a stacked GRU RNN
     # provided clones function.
 
   def init_hidden(self): #called in main in the epoch loop
-    # TODO ========================
     # initialize the hidden states to zero
     """
     This is used for the first mini-batch in an epoch, only.
     """
-
-    return # a parameter tensor of shape (self.num_layers, self.batch_size, self.hidden_size)
+    return torch.zeros(self.num_layers, self.batch_size, self.hidden_size)# a parameter tensor of shape (self.num_layers, self.batch_size, self.hidden_size)
 
   def forward(self, inputs, hidden):
     # TODO ========================
@@ -183,16 +181,18 @@ class GRU(nn.Module): # Implement a stacked GRU RNN
     """
     embeddings = self.embedding(inputs) #(seq_len, batch_size, emb_size)
     logits = []
-    for t in range(len(self.seq_len)):
+    for t in range(self.seq_len):
       input = embeddings[t] #the very first input to a GRU cell is the embedding (#embeddings == #seq_len)
       for h_index in range(self.num_layers):
         h = self.GRU_cells[h_index].forward(input,hidden[h_index])
         input = h # updating the input with output of the GRU cell, will be used as input to GRU cell at next timesept (vertically up the stacks)
-        hidden[h_index]=h # updating the hidden layer with output of GRU cell, will be used as input to GRU cell at next timestep (horizontally)
-        #hidden state of the last cell is assecbile here
-      logits.append(self.decode(h))
+        hidden[h_index]=h # updating/overriding the hidden layer with output of GRU cell, will be used as input to GRU cell at next timestep (horizontally)
+                          # hidden state of the last cell is accessible here
+      logits.append(self.decoder(h))
 
-    return logits.view(self.seq_len, self.batch_size, self.vocab_size), hidden
+    return torch.stack(logits), hidden
+
+    #return logits.view(self.seq_len, self.batch_size, self.vocab_size), hidden
 
   def generate(self, input, hidden, generated_seq_len): #generate next work using the GRU
     # TODO ========================
