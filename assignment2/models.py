@@ -92,7 +92,7 @@ class RNN(nn.Module):  # Implement a stacked vanilla RNN with Tanh nonlinearitie
         This is used for the first mini-batch in an epoch, only.
         """
         # a parameter tensor of shape (self.num_layers, self.batch_size, self.hidden_size)
-        return  torch.from_numpy(np.zeros((self.num_layers, self.batch_size, self.hidden_size)))
+        return torch.from_numpy(np.zeros((self.num_layers, self.batch_size, self.hidden_size)))
 
     def forward(self, inputs, hidden):
         # TODO ========================
@@ -130,6 +130,22 @@ class RNN(nn.Module):  # Implement a stacked vanilla RNN with Tanh nonlinearitie
                   if you are curious.
                         shape: (num_layers, batch_size, hidden_size)
         """
+        # s is hidden
+        # s = self.init_hidden()
+        # o = np.zeros((self.seq_len, self.vocab_size))
+        # arange(1, n) or hidden[-1] = np.zeros(self.hidden_dim)
+
+        # iterate over timestamp
+        for t in np.arrange(1, self.seq_len):
+            # iterate over layers
+            # for layer in self.num_layers:
+            #     print(t, layer)
+            hidden[t] = np.tanh(self.U[:, inputs[t]] + self.W.dot(hidden[t-1]))
+            # **Do NOT apply softmax to the outputs!**
+            # o[t] = softmax(self.V.dot(s[t]))
+            hidden[t] = self.V.dot(hidden[t])
+
+
         return logits.view(self.seq_len, self.batch_size, self.vocab_size), hidden
 
     def generate(self, input, hidden, generated_seq_len):
