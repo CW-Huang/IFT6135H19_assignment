@@ -320,7 +320,7 @@ elif args.model == 'TRANSFORMER':
 else:
   print("Model type not recognized.")
 
-model.to(device)
+model = model.to(device)
 
 # LOSS FUNCTION
 loss_fn = nn.CrossEntropyLoss()
@@ -369,7 +369,7 @@ def run_epoch(model, data, is_train=False, lr=1.0):
     start_time = time.time()
     if args.model != 'TRANSFORMER':
         hidden = model.init_hidden()
-        hidden.to(device)
+        hidden = hidden.to(device)
     costs = 0.0
     iters = 0
     losses = []
