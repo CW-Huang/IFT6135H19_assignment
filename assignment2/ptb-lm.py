@@ -1,7 +1,7 @@
 #!/bin/python
 # coding: utf-8
 
-# Code outline/scaffold for 
+# Code outline/scaffold for
 # ASSIGNMENT 2: RNNs, Attention, and Optimization
 # By Tegan Maharaj, David Krueger, and Chin-Wei Huang
 # IFT6135 at University of Montreal
@@ -13,33 +13,33 @@
 #    https://github.com/teganmaharaj/zoneout/blob/master/zoneout_word_ptb.py
 #    https://github.com/harvardnlp/annotated-transformer
 
-# GENERAL INSTRUCTIONS: 
-#    - ! IMPORTANT! 
-#      Unless we're otherwise notified we will run exactly this code, importing 
-#      your models from models.py to test them. If you find it necessary to 
-#      modify or replace this script (e.g. if you are using TensorFlow), you 
-#      must justify this decision in your report, and contact the TAs as soon as 
-#      possible to let them know. You are free to modify/add to this script for 
-#      your own purposes (e.g. monitoring, plotting, further hyperparameter 
-#      tuning than what is required), but remember that unless we're otherwise 
-#      notified we will run this code as it is given to you, NOT with your 
+# GENERAL INSTRUCTIONS:
+#    - ! IMPORTANT!
+#      Unless we're otherwise notified we will run exactly this code, importing
+#      your models from models.py to test them. If you find it necessary to
+#      modify or replace this script (e.g. if you are using TensorFlow), you
+#      must justify this decision in your report, and contact the TAs as soon as
+#      possible to let them know. You are free to modify/add to this script for
+#      your own purposes (e.g. monitoring, plotting, further hyperparameter
+#      tuning than what is required), but remember that unless we're otherwise
+#      notified we will run this code as it is given to you, NOT with your
 #      modifications.
-#    - We encourage you to read and understand this code; there are some notes 
+#    - We encourage you to read and understand this code; there are some notes
 #      and comments to help you.
-#    - Typically, all of your code to submit should be written in models.py; 
+#    - Typically, all of your code to submit should be written in models.py;
 #      see further instructions at the top of that file / in TODOs.
-#          - RNN recurrent unit 
+#          - RNN recurrent unit
 #          - GRU recurrent unit
 #          - Multi-head attention for the Transformer
-#    - Other than this file and models.py, you will probably also write two 
-#      scripts. Include these and any other code you write in your git repo for 
+#    - Other than this file and models.py, you will probably also write two
+#      scripts. Include these and any other code you write in your git repo for
 #      submission:
 #          - Plotting (learning curves, loss w.r.t. time, gradients w.r.t. hiddens)
-#          - Loading and running a saved model (computing gradients w.r.t. hiddens, 
+#          - Loading and running a saved model (computing gradients w.r.t. hiddens,
 #            and for sampling from the model)
 
-# PROBLEM-SPECIFIC INSTRUCTIONS:   
-#    - For Problems 1-3, paste the code for the RNN, GRU, and Multi-Head attention 
+# PROBLEM-SPECIFIC INSTRUCTIONS:
+#    - For Problems 1-3, paste the code for the RNN, GRU, and Multi-Head attention
 #      respectively in your report, in a monospace font.
 #    - For Problem 4.1 (model comparison), the hyperparameter settings you should run are as follows:
 #          --model=RNN --optimizer=ADAM --initial_lr=0.0001 --batch_size=20 --seq_len=35 --hidden_size=1500 --num_layers=2 --dp_keep_prob=0.35 --save_best
@@ -50,31 +50,31 @@
 #                  RNN: train:  120  val: 157
 #                  GRU: train:   65  val: 104
 #          TRANSFORMER:  train:  77  val: 152
-#    - For Problem 4.2 (exploration of optimizers), you will make use of the 
+#    - For Problem 4.2 (exploration of optimizers), you will make use of the
 #      experiments from 4.1, and should additionally run the following experiments:
-#          --model=RNN --optimizer=SGD --initial_lr=0.0001 --batch_size=20 --seq_len=35 --hidden_size=1500 --num_layers=2 --dp_keep_prob=0.35 
+#          --model=RNN --optimizer=SGD --initial_lr=0.0001 --batch_size=20 --seq_len=35 --hidden_size=1500 --num_layers=2 --dp_keep_prob=0.35
 #          --model=GRU --optimizer=SGD --initial_lr=10 --batch_size=20 --seq_len=35 --hidden_size=1500 --num_layers=2 --dp_keep_prob=0.35
 #          --model=TRANSFORMER --optimizer=SGD --initial_lr=20 --batch_size=128 --seq_len=35 --hidden_size=512 --num_layers=6 --dp_keep_prob=.9
 #          --model=RNN --optimizer=SGD_LR_SCHEDULE --initial_lr=1 --batch_size=20 --seq_len=35 --hidden_size=512 --num_layers=2 --dp_keep_prob=0.35
 #          --model=GRU --optimizer=ADAM --initial_lr=0.0001 --batch_size=20 --seq_len=35 --hidden_size=1500 --num_layers=2 --dp_keep_prob=0.35
 #          --model=TRANSFORMER --optimizer=ADAM --initial_lr=0.001 --batch_size=128 --seq_len=35 --hidden_size=512 --num_layers=2 --dp_keep_prob=.9
-#    - For Problem 4.3 (exloration of hyperparameters), do your best to get 
-#      better validation perplexities than the settings given for 4.1. You may 
-#      try any combination of the hyperparameters included as arguments in this 
-#      script's ArgumentParser, but do not implement any additional 
-#      regularizers/features. You may (and will probably want to) run a lot of 
-#      different things for just 1-5 epochs when you are trying things out, but 
+#    - For Problem 4.3 (exloration of hyperparameters), do your best to get
+#      better validation perplexities than the settings given for 4.1. You may
+#      try any combination of the hyperparameters included as arguments in this
+#      script's ArgumentParser, but do not implement any additional
+#      regularizers/features. You may (and will probably want to) run a lot of
+#      different things for just 1-5 epochs when you are trying things out, but
 #      you must report at least 3 experiments on each architecture that have run
 #      for at least 40 epochs.
-#    - For Problem 5, perform all computations / plots based on saved models 
-#      from Problem 4.1. NOTE this means you don't have to save the models for 
+#    - For Problem 5, perform all computations / plots based on saved models
+#      from Problem 4.1. NOTE this means you don't have to save the models for
 #      your exploration, which can make things go faster. (Of course
-#      you can still save them if you like; just add the flag --save_best). 
-#    - For Problem 5.1, you can modify the loss computation in this script 
-#      (search for "LOSS COMPUTATION" to find the appropriate line. Remember to 
+#      you can still save them if you like; just add the flag --save_best).
+#    - For Problem 5.1, you can modify the loss computation in this script
+#      (search for "LOSS COMPUTATION" to find the appropriate line. Remember to
 #      submit your code.
-#    - For Problem 5.3, you must implement the generate method of the RNN and 
-#      GRU.  Implementing this method is not considered part of problems 1/2 
+#    - For Problem 5.3, you must implement the generate method of the RNN and
+#      GRU.  Implementing this method is not considered part of problems 1/2
 #      respectively, and will be graded as part of Problem 5.3
 
 
@@ -92,7 +92,7 @@ np = numpy
 
 # NOTE ==============================================
 # This is where your models are imported
-from models import RNN, GRU 
+from models import RNN, GRU
 from models import make_model as TRANSFORMER
 
 
@@ -134,7 +134,7 @@ parser.add_argument('--dp_keep_prob', type=float, default=0.35,
                     help='dropout *keep* probability (dp_keep_prob=0 means no dropout')
 
 # Arguments that you may want to make use of / implement more code for
-parser.add_argument('--debug', action='store_true') 
+parser.add_argument('--debug', action='store_true')
 parser.add_argument('--save_dir', type=str, default='',
                     help='path to save the experimental config, logs, model \
                     This is automatically generated based on the command line \
@@ -146,7 +146,7 @@ parser.add_argument('--evaluate', action='store_true',
                     completed ALL hyperparameter tuning on the validation set.\
                     Note we are not requiring you to do this.")
 
-# DO NOT CHANGE THIS (setting the random seed makes experiments deterministic, 
+# DO NOT CHANGE THIS (setting the random seed makes experiments deterministic,
 # which helps for reproducibility)
 parser.add_argument('--seed', type=int, default=1111,
                     help='random seed')
@@ -155,12 +155,12 @@ args = parser.parse_args()
 argsdict = args.__dict__
 argsdict['code_file'] = sys.argv[0]
 
-# Use the model, optimizer, and the flags passed to the script to make the 
+# Use the model, optimizer, and the flags passed to the script to make the
 # name for the experimental dir
 print("\n########## Setting Up Experiment ######################")
 flags = [flag.lstrip('--') for flag in sys.argv[1:]]
 experiment_path = os.path.join(args.save_dir+'_'.join([argsdict['model'],
-                                         argsdict['optimizer']] 
+                                         argsdict['optimizer']]
                                          + flags))
 
 # Increment a counter so that previous results with the same args will not
@@ -185,7 +185,7 @@ torch.manual_seed(args.seed)
 # Use the GPU if you have one
 if torch.cuda.is_available():
     print("Using the GPU")
-    device = torch.device("cuda") 
+    device = torch.device("cuda")
 else:
     print("WARNING: You are about to run on cpu, and this will likely run out \
       of memory. \n You can try setting batch_size=1 to reduce memory usage")
@@ -257,7 +257,7 @@ class Batch:
     def __init__(self, x, pad=0):
         self.data = x
         self.mask = self.make_mask(self.data, pad)
-    
+
     @staticmethod
     def make_mask(data, pad):
         "Create a mask to hide future words."
@@ -283,7 +283,7 @@ print('  vocabulary size: {}'.format(vocab_size))
 
 
 ###############################################################################
-# 
+#
 # MODEL SETUP
 #
 ###############################################################################
@@ -293,26 +293,26 @@ print('  vocabulary size: {}'.format(vocab_size))
 # if required for your implementation, but it should not typically be necessary,
 # and you must let the TAs know if you do so.
 if args.model == 'RNN':
-    model = RNN(emb_size=args.emb_size, hidden_size=args.hidden_size, 
+    model = RNN(emb_size=args.emb_size, hidden_size=args.hidden_size,
                 seq_len=args.seq_len, batch_size=args.batch_size,
-                vocab_size=vocab_size, num_layers=args.num_layers, 
-                dp_keep_prob=args.dp_keep_prob) 
+                vocab_size=vocab_size, num_layers=args.num_layers,
+                dp_keep_prob=args.dp_keep_prob)
 elif args.model == 'GRU':
-    model = GRU(emb_size=args.emb_size, hidden_size=args.hidden_size, 
+    model = GRU(emb_size=args.emb_size, hidden_size=args.hidden_size,
                 seq_len=args.seq_len, batch_size=args.batch_size,
-                vocab_size=vocab_size, num_layers=args.num_layers, 
+                vocab_size=vocab_size, num_layers=args.num_layers,
                 dp_keep_prob=args.dp_keep_prob)
 elif args.model == 'TRANSFORMER':
     if args.debug:  # use a very small model
         model = TRANSFORMER(vocab_size=vocab_size, n_units=16, n_blocks=2)
     else:
-        # Note that we're using num_layers and hidden_size to mean slightly 
+        # Note that we're using num_layers and hidden_size to mean slightly
         # different things here than in the RNNs.
-        # Also, the Transformer also has other hyperparameters 
+        # Also, the Transformer also has other hyperparameters
         # (such as the number of attention heads) which can change it's behavior.
-        model = TRANSFORMER(vocab_size=vocab_size, n_units=args.hidden_size, 
-                            n_blocks=args.num_layers, dropout=1.-args.dp_keep_prob) 
-    # these 3 attributes don't affect the Transformer's computations; 
+        model = TRANSFORMER(vocab_size=vocab_size, n_units=args.hidden_size,
+                            n_blocks=args.num_layers, dropout=1.-args.dp_keep_prob)
+    # these 3 attributes don't affect the Transformer's computations;
     # they are only used in run_epoch
     model.batch_size=args.batch_size
     model.seq_len=args.seq_len
@@ -327,14 +327,14 @@ loss_fn = nn.CrossEntropyLoss()
 if args.optimizer == 'ADAM':
     optimizer = torch.optim.Adam(model.parameters(), lr=args.initial_lr)
 
-# LEARNING RATE SCHEDULE    
+# LEARNING RATE SCHEDULE
 lr = args.initial_lr
 lr_decay_base = 1 / 1.15
 m_flat_lr = 14.0 # we will not touch lr for the first m_flat_lr epochs
 
 
 ###############################################################################
-# 
+#
 # DEFINE COMPUTATIONS FOR PROCESSING ONE EPOCH
 #
 ###############################################################################
@@ -342,12 +342,12 @@ m_flat_lr = 14.0 # we will not touch lr for the first m_flat_lr epochs
 def repackage_hidden(h):
     """
     Wraps hidden states in new Tensors, to detach them from their history.
-    
-    This prevents Pytorch from trying to backpropagate into previous input 
-    sequences when we use the final hidden states from one mini-batch as the 
+
+    This prevents Pytorch from trying to backpropagate into previous input
+    sequences when we use the final hidden states from one mini-batch as the
     initial hidden states for the next mini-batch.
-    
-    Using the final hidden states in this way makes sense when the elements of 
+
+    Using the final hidden states in this way makes sense when the elements of
     the mini-batches are actually successive subsequences in a set of longer sequences.
     This is the case with the way we've processed the Penn Treebank dataset.
     """
@@ -368,8 +368,7 @@ def run_epoch(model, data, is_train=False, lr=1.0):
     epoch_size = ((len(data) // model.batch_size) - 1) // model.seq_len
     start_time = time.time()
     if args.model != 'TRANSFORMER':
-        hidden = model.init_hidden()
-        hidden.to(device)
+        hidden = model.init_hidden().to(device)
     costs = 0.0
     iters = 0
     losses = []
@@ -391,22 +390,22 @@ def run_epoch(model, data, is_train=False, lr=1.0):
         tt = torch.squeeze(targets.view(-1, model.batch_size * model.seq_len))
 
         # LOSS COMPUTATION
-        # This line currently averages across all the sequences in a mini-batch 
+        # This line currently averages across all the sequences in a mini-batch
         # and all time-steps of the sequences.
-        # For problem 5.3, you will (instead) need to compute the average loss 
-        #at each time-step separately. 
+        # For problem 5.3, you will (instead) need to compute the average loss
+        #at each time-step separately.
         loss = loss_fn(outputs.contiguous().view(-1, model.vocab_size), tt)
         costs += loss.data.item() * model.seq_len
         losses.append(costs)
         iters += model.seq_len
         if args.debug:
             print(step, loss)
-        if is_train:  # Only update parameters if training 
+        if is_train:  # Only update parameters if training
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), 0.25)
             if args.optimizer == 'ADAM':
                 optimizer.step()
-            else: 
+            else:
                 for p in model.parameters():
                     if p.grad is not None:
                         p.data.add_(-lr, p.grad.data)
@@ -434,7 +433,7 @@ times = []
 
 # In debug mode, only run one epoch
 if args.debug:
-    num_epochs = 1 
+    num_epochs = 1
 else:
     num_epochs = args.num_epochs
 
@@ -461,10 +460,10 @@ for epoch in range(num_epochs):
             torch.save(model.state_dict(), os.path.join(args.save_dir, 'best_params.pt'))
         # NOTE ==============================================
         # You will need to load these parameters into the same model
-        # for a couple Problems: so that you can compute the gradient 
+        # for a couple Problems: so that you can compute the gradient
         # of the loss w.r.t. hidden state as required in Problem 5.2
         # and to sample from the the model as required in Problem 5.3
-        # We are not asking you to run on the test data, but if you 
+        # We are not asking you to run on the test data, but if you
         # want to look at test performance you would load the saved
         # model and run on the test data with batch_size=1
 
@@ -486,11 +485,11 @@ for epoch in range(num_epochs):
 # SAVE LEARNING CURVES
 lc_path = os.path.join(args.save_dir, 'learning_curves.npy')
 print('\nDONE\n\nSaving learning curves to '+lc_path)
-np.save(lc_path, {'train_ppls':train_ppls, 
-                  'val_ppls':val_ppls, 
+np.save(lc_path, {'train_ppls':train_ppls,
+                  'val_ppls':val_ppls,
                   'train_losses':train_losses,
                   'val_losses':val_losses})
 # NOTE ==============================================
-# To load these, run 
+# To load these, run
 # >>> x = np.load(lc_path)[()]
 # You will need these values for plotting learning curves (Problem 4)
