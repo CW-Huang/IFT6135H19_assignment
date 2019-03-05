@@ -52,7 +52,8 @@
 #          TRANSFORMER:  train:  77  val: 152
 #    - For Problem 4.2 (exploration of optimizers), you will make use of the 
 #      experiments from 4.1, and should additionally run the following experiments:
-#          --model=RNN --optimizer=SGD --initial_lr=0.0001 --batch_size=20 --seq_len=35 --hidden_size=1500 --num_layers=2 --dp_keep_prob=0.35 
+#          --model=RNN --optimizer=SGD --initial_lr=0.0001 --batch_size=20 --seq_len=35 --hidden_size=1500 --num_layers=2 --dp_keep_prob=0.35
+#          --model RNN --optimizer SGD --initial_lr 0.0001 --batch_size 20 --seq_len 35 --hidden_size 1500 --num_layers 2 --dp_keep_prob 0.35
 #          --model=GRU --optimizer=SGD --initial_lr=10 --batch_size=20 --seq_len=35 --hidden_size=1500 --num_layers=2 --dp_keep_prob=0.35
 #          --model=TRANSFORMER --optimizer=SGD --initial_lr=20 --batch_size=128 --seq_len=35 --hidden_size=512 --num_layers=6 --dp_keep_prob=.9
 #          --model=RNN --optimizer=SGD_LR_SCHEDULE --initial_lr=1 --batch_size=20 --seq_len=35 --hidden_size=512 --num_layers=2 --dp_keep_prob=0.35
@@ -172,7 +173,7 @@ while os.path.exists(experiment_path + "_" + str(i)):
 experiment_path = experiment_path + "_" + str(i)
 
 # Creates an experimental directory and dumps all the args to a text file
-os.mkdir(experiment_path)
+os.makedirs(experiment_path, exist_ok=True)
 print ("\nPutting log in %s"%experiment_path)
 argsdict['save_dir'] = experiment_path
 with open (os.path.join(experiment_path,'exp_config.txt'), 'w') as f:
