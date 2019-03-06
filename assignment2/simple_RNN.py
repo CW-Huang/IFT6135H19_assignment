@@ -69,7 +69,7 @@ class RNN(nn.Module): # Implement a stacked vanilla RNN with Tanh nonlinearities
 
     # Embedding decoder
     self.decode = nn.Linear(hidden_size, vocab_size)
-    self.softmax = nn.LogSoftmax(dim=1)
+    self.softmax = nn.Softmax(dim=1)
 
   def init_weights_uniform(self):
     # TODO ========================
@@ -140,6 +140,7 @@ class RNN(nn.Module): # Implement a stacked vanilla RNN with Tanh nonlinearities
         - Sampled sequences of tokens
                     shape: (generated_seq_len, batch_size)
     """
+    import pdb; pdb.set_trace()
     self.eval()
     samples = []
     for i in range(generated_seq_len):

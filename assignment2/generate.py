@@ -120,3 +120,4 @@ for step, (x, y) in enumerate(ptb_iterator(test_data, model.batch_size, model.se
     inputs = torch.from_numpy(x.astype(np.int64)).transpose(0, 1).contiguous().to(device)#.cuda()
     seq = model.generate(inputs, hidden, generated_seq_len=10)
     break
+import pdb; pdb.set_trace()
