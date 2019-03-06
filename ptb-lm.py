@@ -192,7 +192,7 @@ torch.manual_seed(args.seed)
 #       of memory. \n You can try setting batch_size=1 to reduce memory usage")
 #     device = torch.device("cpu")
 
-device = torch.device("cpu")
+device = torch.device("cuda")
 
 
 ###############################################################################
@@ -299,7 +299,7 @@ if args.model == 'RNN':
     model = RNN(emb_size=args.emb_size, hidden_size=args.hidden_size, 
                 seq_len=args.seq_len, batch_size=args.batch_size,
                 vocab_size=vocab_size, num_layers=args.num_layers, 
-                dp_keep_prob=args.dp_keep_prob) 
+                dp_keep_prob=args.dp_keep_prob).cuda()
 elif args.model == 'GRU':
     model = GRU(emb_size=args.emb_size, hidden_size=args.hidden_size, 
                 seq_len=args.seq_len, batch_size=args.batch_size,
@@ -377,8 +377,10 @@ def run_epoch(model, data, is_train=False, lr=1.0):
     iters = 0
     losses = []
 
+
     # LOOP THROUGH MINIBATCHES
     for step, (x, y) in enumerate(ptb_iterator(data, model.batch_size, model.seq_len)):
+
         if args.model == 'TRANSFORMER':
             batch = Batch(torch.from_numpy(x).long().to(device))
             model.zero_grad()
@@ -390,7 +392,7 @@ def run_epoch(model, data, is_train=False, lr=1.0):
             hidden = repackage_hidden(hidden)
             outputs, hidden = model(inputs, hidden)
 
-        targets = torch.from_numpy(y.astype(np.int64)).transpose(0, 1).contiguous().to(device)#.cuda()
+        targets = torch.from_numpy(y.astype(np.int64)).transpose(0, 1).contiguous().to(device).cpu()
         tt = torch.squeeze(targets.view(-1, model.batch_size * model.seq_len))
 
         # LOSS COMPUTATION
@@ -399,6 +401,7 @@ def run_epoch(model, data, is_train=False, lr=1.0):
         # For problem 5.3, you will (instead) need to compute the average loss 
         #at each time-step separately. 
         loss = loss_fn(outputs.contiguous().view(-1, model.vocab_size), tt)
+        loss.cuda()
         costs += loss.data.item() * model.seq_len
         losses.append(costs)
         iters += model.seq_len
@@ -413,8 +416,8 @@ def run_epoch(model, data, is_train=False, lr=1.0):
                 for p in model.parameters():
                     if p.grad is not None:
                         p.data.add_(-lr, p.grad.data)
-            if step % (epoch_size // 10) == 10:
-                print('step: '+ str(step) + '\t' \
+            if step % 1 == 0:
+                print('batch step: '+ str(step) + '\t' \
                     + 'loss: '+ str(costs) + '\t' \
                     + 'speed (wps):' + str(iters * model.batch_size / (time.time() - start_time)))
     return np.exp(costs / iters), losses
