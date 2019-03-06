@@ -37,7 +37,7 @@ def clones(module, N):
 
 # Problem 1
 class RNN(nn.Module): # Implement a stacked vanilla RNN with Tanh nonlinearities.
-  def __init__(self, emb_size, hidden_size, seq_len, batch_size, vocab_size, num_layers=2, dp_keep_prob=0.1):
+  def __init__(self, emb_size, hidden_size, seq_len, batch_size, vocab_size, num_layers=2, dp_keep_prob=0.5):
 
     """
     emb_size:     The numvwe of units in the input embeddings
@@ -73,7 +73,7 @@ class RNN(nn.Module): # Implement a stacked vanilla RNN with Tanh nonlinearities
     self.init_weights_uniform(fc)
     self.fc = clones(fc, num_layers)
 
-    self.dropout = nn.Dropout(dp_keep_prob)
+    self.dropout = nn.Dropout(1 - dp_keep_prob)
     self.activation = nn.Tanh()
 
     # Embedding decoder
@@ -135,7 +135,7 @@ class RNN(nn.Module): # Implement a stacked vanilla RNN with Tanh nonlinearities
             h_next_ts.append(h_recurrent)
         h_previous_ts = torch.stack(h_next_ts)
         logits.append(self.decode(h_previous_layer))
-    return torch.stack(logits), h_next_ts
+    return torch.stack(logits), h_previous_ts
 
   def generate(self, input, hidden, generated_seq_len):
     """
