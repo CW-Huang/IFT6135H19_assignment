@@ -61,21 +61,32 @@ class RNN(nn.Module): # Implement a stacked vanilla RNN with Tanh nonlinearities
     self.embedding = nn.Embedding(vocab_size, emb_size)
 
     # N stacked recurrent layers + fully connected
-    self.linear_W = clones(nn.Linear(emb_size, hidden_size), num_layers)
-    self.linear_U = clones(nn.Linear(hidden_size, hidden_size), num_layers)
-    self.fc = clones(nn.Linear(hidden_size, emb_size), num_layers)
-    self.dropout = clones(nn.Dropout(dp_keep_prob), num_layers)
+    linear_W = nn.Linear(emb_size, hidden_size)
+    self.init_weights_uniform(linear_W)
+    self.linear_W = clones(linear_W, num_layers)
+
+    linear_U = nn.Linear(hidden_size, hidden_size)
+    self.init_weights_uniform(linear_U)
+    self.linear_U = clones(linear_U, num_layers)
+
+    fc = nn.Linear(hidden_size, emb_size)
+    self.init_weights_uniform(fc)
+    self.fc = clones(fc, num_layers)
+
+    self.dropout = nn.Dropout(dp_keep_prob)
     self.activation = nn.Tanh()
 
     # Embedding decoder
     self.decode = nn.Linear(hidden_size, vocab_size)
+    # TODO: dim = 1 ?
     self.softmax = nn.Softmax(dim=1)
 
-  def init_weights_uniform(self):
-    # TODO ========================
-    # Initialize all the weights uniformly in the range [-0.1, 0.1]
-    # and all the biases to 0 (in place)
-    return
+  def init_weights_uniform(self, layer):
+    """
+    Initialize all the weights uniformly in the range [-0.1, 0.1]
+    and all the biases to 0 (in place)
+    """
+    return torch.nn.init.uniform_(layer.weight, a=-.1, b=.1)
 
   def init_hidden(self):
     """
@@ -118,8 +129,8 @@ class RNN(nn.Module): # Implement a stacked vanilla RNN with Tanh nonlinearities
             a_U = self.linear_U[l](h_previous_ts[l])
             h_recurrent = self.activation(a_U + a_W)
             # Fully connected layer
-            # TODO: Do we need tanh here?
-            h_previous_layer = self.activation(self.dropout[l](self.fc[l](h_recurrent)))
+            # No activation function: https://ift6135forum.slack.com/archives/CGF0C0C4U/p1551478589018100
+            h_previous_layer = self.dropout(self.fc[l](h_recurrent))
             # Keep the ref for next ts
             h_next_ts.append(h_recurrent)
         h_previous_ts = torch.stack(h_next_ts)

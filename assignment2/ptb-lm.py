@@ -289,10 +289,6 @@ print('  vocabulary size: {}'.format(vocab_size))
 #
 ###############################################################################
 
-# NOTE ==============================================
-# This is where your model code will be called. You may modify this code
-# if required for your implementation, but it should not typically be necessary,
-# and you must let the TAs know if you do so.
 if args.model == 'RNN':
     model = RNN(emb_size=args.emb_size, hidden_size=args.hidden_size,
                 seq_len=args.seq_len, batch_size=args.batch_size,
@@ -361,7 +357,7 @@ def repackage_hidden(h):
 def print_example(targets, outputs, id_2_word, is_train):
     from torch.nn.functional import softmax
     targets = targets[:, 0]
-    outputs = softmax(outputs)[:, 0, :]
+    outputs = softmax(outputs, dim=2)[:, 0, :]
     outputs = np.argmax(outputs.cpu().detach().numpy(), axis=1)
     print('>>> target: \n {}'.format(' '.join([id_2_word[int(i)] for i in targets])))
     print('>>> output: \n {}'.format(' '.join([id_2_word[int(i)] for i in outputs])))
@@ -426,7 +422,7 @@ def run_epoch(model, data, is_train=False, lr=1.0, id_2_word=None):
                 print('step: '+ str(step) + '\t' \
                     + 'loss: '+ str(costs) + '\t' \
                     + 'speed (wps):' + str(iters * model.batch_size / (time.time() - start_time)))
-                print_example(targets, outputs, id_2_word, is_train)
+    print_example(targets, outputs, id_2_word, is_train)
     return np.exp(costs / iters), losses
 
 
@@ -463,7 +459,7 @@ for epoch in range(num_epochs):
     train_ppl, train_loss = run_epoch(model, train_data, True, lr,  id_2_word)
 
     # RUN MODEL ON VALIDATION DATA
-    val_ppl, val_loss = run_epoch(model, valid_dat)
+    val_ppl, val_loss = run_epoch(model, valid_data, id_2_word=id_2_word)
 
 
     # SAVE MODEL IF IT'S THE BEST SO FAR
