@@ -300,6 +300,8 @@ if args.model == 'RNN':
                 seq_len=args.seq_len, batch_size=args.batch_size,
                 vocab_size=vocab_size, num_layers=args.num_layers, 
                 dp_keep_prob=args.dp_keep_prob).cuda()
+
+    # print("List parameters model = ", list(model.parameters()))
 elif args.model == 'GRU':
     model = GRU(emb_size=args.emb_size, hidden_size=args.hidden_size, 
                 seq_len=args.seq_len, batch_size=args.batch_size,
@@ -394,6 +396,8 @@ def run_epoch(model, data, is_train=False, lr=1.0):
 
         targets = torch.from_numpy(y.astype(np.int64)).transpose(0, 1).contiguous().to(device).cpu()
         tt = torch.squeeze(targets.view(-1, model.batch_size * model.seq_len))
+
+        print('targets is on device = ', targets.device)
 
         # LOSS COMPUTATION
         # This line currently averages across all the sequences in a mini-batch 

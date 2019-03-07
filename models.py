@@ -76,16 +76,16 @@ class RNN(nn.Module):  # Implement a stacked vanilla RNN with Tanh nonlinearitie
         self.tanh = nn.Tanh()
         self.encoder = nn.Embedding(self.vocab_size, self.emb_size)
         self.decoder = nn.Linear(self.hidden_size, self.vocab_size)
-        self.W = torch.zeros(self.num_layers, self.hidden_size, self.hidden_size)
-        self.I = torch.zeros(self.num_layers, self.hidden_size, self.hidden_size)
-        self.V = torch.zeros(self.vocab_size, self.hidden_size)
-        self.V = torch.zeros(self.hidden_size, self.emb_size)
+        self.W = nn.Parameter(torch.zeros(self.num_layers, self.hidden_size, self.hidden_size))
+        self.I = nn.Parameter(torch.zeros(self.num_layers, self.hidden_size, self.hidden_size))
+        self.V = nn.Parameter(torch.zeros(self.vocab_size, self.hidden_size))
+        # self.V = nn.Parameter(torch.zeros(self.hidden_size, self.emb_size))
         print('w device ', self.W.device)
-        self.I = torch.zeros(self.num_layers, self.hidden_size, self.hidden_size)
+        # self.I = nn.Parameter(torch.zeros(self.num_layers, self.hidden_size, self.hidden_size))
 
 
-        self.V = torch.randn(self.vocab_size, self.hidden_size)
-        self.U = torch.randn(self.hidden_size, self.emb_size)
+        self.V = nn.Parameter(torch.randn(self.vocab_size, self.hidden_size))
+        self.U = nn.Parameter(torch.randn(self.hidden_size, self.emb_size))
 
         print('u device ', self.U.device)
 
@@ -95,11 +95,13 @@ class RNN(nn.Module):  # Implement a stacked vanilla RNN with Tanh nonlinearitie
             self.I[layer] = torch.randn(self.hidden_size, self.hidden_size)
             self.W[layer] = torch.randn(self.hidden_size, self.hidden_size)
 
-        if torch.cuda.is_available():
-            self.W = self.W.cuda()
-            self.I = self.I.cuda()
-            self.V = self.V.cuda()
-            self.U = self.U.cuda()
+        # if torch.cuda.is_available():
+        #     self.W = self.W.cuda()
+        #     self.I = self.I.cuda()
+        #     self.V = self.V.cuda()
+        #     self.U = self.U.cuda()
+
+        
 
         # TODO
         self.bV = torch.zeros(self.hidden_size)
@@ -168,6 +170,8 @@ class RNN(nn.Module):  # Implement a stacked vanilla RNN with Tanh nonlinearitie
         """
 
         print('w device FOWARD', self.W.device)
+        print('u device FOWARD', self.U.device)
+        print('v device FOWARD', self.V.device)
         logits = torch.zeros(self.seq_len, self.batch_size, self.vocab_size)
 
         # input_emb = inputs[t][batch]
