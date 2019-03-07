@@ -78,8 +78,7 @@ class RNN(nn.Module): # Implement a stacked vanilla RNN with Tanh nonlinearities
 
     # Embedding decoder
     self.decode = nn.Linear(hidden_size, vocab_size)
-    # TODO: dim = 1 ?
-    self.softmax = nn.Softmax(dim=1)
+    self.softmax = nn.Softmax(dim=2)
 
   def init_weights_uniform(self, layer):
     """
@@ -151,10 +150,35 @@ class RNN(nn.Module): # Implement a stacked vanilla RNN with Tanh nonlinearities
         - Sampled sequences of tokens
                     shape: (generated_seq_len, batch_size)
     """
-    import pdb; pdb.set_trace()
+
     self.eval()
+
     samples = []
+    h_previous_ts = hidden
+    h_next_ts = []
+
+    new_input = input
+
     for i in range(generated_seq_len):
-        logits, hidden = self.forward(input, hidden)
-        samples.append(self.softmax(logits))
-    return torch.stack(samples)
+        new_input = new_input.to(torch.device("cuda"))
+        emb = self.embedding(new_input)
+        h_previous_layer = emb
+        for l in range(self.num_layers):
+            # Recurrent layer
+            a_W = self.linear_W[l](h_previous_layer)
+            a_U = self.linear_U[l](h_previous_ts[l])
+            h_recurrent = self.activation(a_U + a_W)
+            # Fully connected layer
+            h_previous_layer = self.dropout(self.fc[l](h_recurrent))
+            # Keep the ref for next ts
+            h_next_ts.append(h_recurrent)
+
+        h_previous_ts = torch.stack(h_next_ts)
+
+        sample = h_previous_layer
+        sample = self.softmax(self.decode(sample))
+        sample_index = int(np.argmax(sample.cpu().detach().numpy()))
+        samples.append(sample_index)
+        new_input[0, 0] = sample_index
+
+    return samples
