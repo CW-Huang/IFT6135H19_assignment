@@ -94,7 +94,7 @@ np = numpy
 # This is where your models are imported
 from models import GRU
 from simple_RNN import RNN
-from models import make_model as TRANSFORMER
+from attention import make_model as TRANSFORMER
 
 
 ##############################################################################
@@ -289,6 +289,7 @@ print('  vocabulary size: {}'.format(vocab_size))
 #
 ###############################################################################
 
+# and you must let the TAs know if you do so.
 if args.model == 'RNN':
     model = RNN(emb_size=args.emb_size, hidden_size=args.hidden_size,
                 seq_len=args.seq_len, batch_size=args.batch_size,
@@ -422,7 +423,7 @@ def run_epoch(model, data, is_train=False, lr=1.0, id_2_word=None):
                 print('step: '+ str(step) + '\t' \
                     + 'loss: '+ str(costs) + '\t' \
                     + 'speed (wps):' + str(iters * model.batch_size / (time.time() - start_time)))
-    print_example(targets, outputs, id_2_word, is_train)
+                print_example(targets, outputs, id_2_word, is_train)
     return np.exp(costs / iters), losses
 
 

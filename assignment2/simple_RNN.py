@@ -7,7 +7,8 @@ import math, copy, time
 from torch.autograd import Variable
 import matplotlib.pyplot as plt
 
-
+# TODO: Add dropout after embedding https://ift6135forum.slack.com/archives/CGF0C0C4U/p1551981909143800?thread_ts=1551936476.131800&cid=CGF0C0C4U
+# TODO: have different input size (emb_size or hidden_size) depending if its the first recurrent layer
 
 # NOTE ==============================================
 #
