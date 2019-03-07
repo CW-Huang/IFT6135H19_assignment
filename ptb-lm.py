@@ -224,7 +224,7 @@ def _file_to_word_ids(filename, word_to_id):
 
 # Processes the raw data from text files
 def ptb_raw_data(data_path=None, prefix="ptb"):
-    train_path = os.path.join(data_path, prefix + ".train.txt")
+    train_path = os.path.join(data_path, prefix + ".train_1k.txt")
     valid_path = os.path.join(data_path, prefix + ".valid.txt")
     test_path = os.path.join(data_path, prefix + ".test.txt")
 
@@ -323,7 +323,7 @@ elif args.model == 'TRANSFORMER':
 else:
   print("Model type not recognized.")
 
-model.to(device)
+model = model.to(device)
 
 # LOSS FUNCTION
 loss_fn = nn.CrossEntropyLoss()
@@ -372,7 +372,7 @@ def run_epoch(model, data, is_train=False, lr=1.0):
     start_time = time.time()
     if args.model != 'TRANSFORMER':
         hidden = model.init_hidden()
-        hidden.to(device)
+        hidden = hidden.to(device)
     costs = 0.0
     iters = 0
     losses = []
