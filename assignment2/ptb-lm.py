@@ -131,7 +131,8 @@ parser.add_argument('--emb_size', type=int, default=200,
 parser.add_argument('--num_epochs', type=int, default=40,
                     help='number of epochs to stop after')
 parser.add_argument('--dp_keep_prob', type=float, default=0.35,
-                    help='dropout *keep* probability (dp_keep_prob=0 means no dropout')
+                    help='dropout *keep* probability. drop_prob = 1-dp_keep_prob \
+                    (dp_keep_prob=1 means no dropout)')
 
 # Arguments that you may want to make use of / implement more code for
 parser.add_argument('--debug', action='store_true') 
