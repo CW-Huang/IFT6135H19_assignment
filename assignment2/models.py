@@ -77,9 +77,8 @@ class RNN(nn.Module): # Implement a stacked vanilla RNN with Tanh nonlinearities
     # TODO ========================
     # Initialize the embedding and output weights uniformly in the range [-0.1, 0.1]
     # and the embedding and output biases to 0 (in place).
-    # Initialize all other (i.e. recurrent and linear) weights AND biases with
-    # Glorot; i.e. uniformly in the range [-k, k] where k is the square root of 
-    # 1/hidden_size
+    # Initialize all other (i.e. recurrent and linear) weights AND biases uniformly 
+    # in the range [-k, k] where k is the square root of 1/hidden_size
 
   def init_hidden(self):
     # TODO ========================
@@ -261,6 +260,8 @@ class MultiHeadedAttention(nn.Module):
         self.n_units = n_units 
 
         # TODO: create/initialize any necessary parameters or layers
+        # Initialize all weights and biases uniformly in the range [-k, k],
+        # where k is the square root of 1/n_units.
         # Note: the only Pytorch modules you are allowed to use are nn.Linear 
         # and nn.Dropout
         
