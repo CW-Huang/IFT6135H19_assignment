@@ -73,10 +73,13 @@ class RNN(nn.Module): # Implement a stacked vanilla RNN with Tanh nonlinearities
     # and compute their gradients automatically. You're not obligated to use the
     # provided clones function.
 
-  def init_weights_uniform(self):
+  def init_weights(self):
     # TODO ========================
-    # Initialize all the weights uniformly in the range [-0.1, 0.1]
-    # and all the biases to 0 (in place)
+    # Initialize the embedding and output weights uniformly in the range [-0.1, 0.1]
+    # and the embedding and output biases to 0 (in place).
+    # Initialize all other (i.e. recurrent and linear) weights AND biases with
+    # Glorot; i.e. uniformly in the range [-k, k] where k is the square root of 
+    # 1/hidden_size
 
   def init_hidden(self):
     # TODO ========================
