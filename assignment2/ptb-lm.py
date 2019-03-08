@@ -92,7 +92,7 @@ np = numpy
 
 # NOTE ==============================================
 # This is where your models are imported
-from models import GRU
+from GRU_RNN import GRU
 from simple_RNN import RNN
 from attention import make_model as TRANSFORMER
 
