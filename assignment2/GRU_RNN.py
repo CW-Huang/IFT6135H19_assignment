@@ -92,7 +92,7 @@ class GRU(nn.Module): # Implement a stacked GRU RNN
   Follow the same instructions as for RNN (above), but use the equations for
   GRU, not Vanilla RNN.
   """
-  def __init__(self, emb_size, hidden_size, seq_len, batch_size, vocab_size, num_layers, dp_keep_prob=0.1):
+  def __init__(self, emb_size, hidden_size, seq_len, batch_size, vocab_size, num_layers, dp_keep_prob=0.2):
     """
     emb_size:     The number of units in the input embeddings
     hidden_size:  The number of hidden units per layer
@@ -143,7 +143,7 @@ class GRU(nn.Module): # Implement a stacked GRU RNN
     """
     This is used for the first mini-batch in an epoch, only.
     """
-    return torch.zeros(self.num_layers, self.batch_size, self.hidden_size)# a parameter tensor of shape (self.num_layers, self.batch_size, self.hidden_size)
+    return torch.zeros(self.num_layers, self.batch_size, self.hidden_size)
 
   def forward(self, inputs, hidden):
     # Compute the forward pass, using a nested python for loops.
@@ -232,6 +232,7 @@ class GRU(nn.Module): # Implement a stacked GRU RNN
 
     for t in range(generated_seq_len):
       h_next_ts = []
+      new_input = new_input.to(torch.device("cuda"))
       embedding = self.embedding(new_input)
       input = embedding
       for h_index in range(self.num_layers):
@@ -247,7 +248,7 @@ class GRU(nn.Module): # Implement a stacked GRU RNN
 
       sample = h_previous_layer
       sample = self.softmax(self.decode(sample))
-      sample_index = int(np.argmax(sample.numpy()))
+      sample_index = int(np.argmax(sample.cpu().detach().numpy()))
       samples.append(sample_index)
       new_input[0, 0] = sample_index
 
