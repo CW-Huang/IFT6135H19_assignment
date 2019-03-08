@@ -123,7 +123,7 @@ parser.add_argument('--hidden_size', type=int, default=200,
 parser.add_argument('--save_best', action='store_true',
                     help='save the model for the best validation performance')
 parser.add_argument('--num_layers', type=int, default=2,
-                    help='number of LSTM layers')
+                    help='number of hidden layers in RNN/GRU, or number of transformer blocks in TRANSFORMER')
 
 # Other hyperparameters you may want to tune in your exploration
 parser.add_argument('--emb_size', type=int, default=200,
