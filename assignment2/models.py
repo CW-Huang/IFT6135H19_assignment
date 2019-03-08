@@ -46,7 +46,7 @@ def clones(module, N):
 class RNN(nn.Module): # Implement a stacked vanilla RNN with Tanh nonlinearities.
   def __init__(self, emb_size, hidden_size, seq_len, batch_size, vocab_size, num_layers, dp_keep_prob):
     """
-    emb_size:     The numvwe of units in the input embeddings
+    emb_size:     The number of units in the input embeddings
     hidden_size:  The number of hidden units per layer
     seq_len:      The length of the input sequences
     vocab_size:   The number of tokens in the vocabulary (10,000 for Penn TreeBank)
@@ -76,7 +76,7 @@ class RNN(nn.Module): # Implement a stacked vanilla RNN with Tanh nonlinearities
   def init_weights(self):
     # TODO ========================
     # Initialize the embedding and output weights uniformly in the range [-0.1, 0.1]
-    # and the embedding and output biases to 0 (in place).
+    # and output biases to 0 (in place). The embeddings should not use a bias vector.
     # Initialize all other (i.e. recurrent and linear) weights AND biases uniformly 
     # in the range [-k, k] where k is the square root of 1/hidden_size
 
