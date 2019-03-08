@@ -7,12 +7,8 @@ import math, copy, time
 from torch.autograd import Variable
 import matplotlib.pyplot as plt
 
-# TODO: Add dropout after embedding https://ift6135forum.slack.com/archives/CGF0C0C4U/p1551981909143800?thread_ts=1551936476.131800&cid=CGF0C0C4U
-# TODO: have different input size (emb_size or hidden_size) depending if its the first recurrent layer
 
 # NOTE ==============================================
-#
-# Fill in code for every method which has a TODO
 #
 # Your implementation should use the contract (inputs
 # and outputs) given for each model, because that is
@@ -70,7 +66,7 @@ class RNN(nn.Module): # Implement a stacked vanilla RNN with Tanh nonlinearities
     # Embedding decoder
     self.decode = nn.Linear(hidden_size, vocab_size)
 
-    self.drop_prob = 1 - dp_keep_prob
+    self.dropout = nn.Dropout(1 - dp_keep_prob)
     self.activation = nn.Tanh()
     self.softmax = nn.Softmax(dim=2)
 
@@ -117,25 +113,34 @@ class RNN(nn.Module): # Implement a stacked vanilla RNN with Tanh nonlinearities
                     shape: (num_layers, batch_size, hidden_size)
     """
     h_previous_ts = hidden
-    logits = []
+    seq_logits = []
     emb = self.embedding(inputs)
     for i in range(self.seq_len):
-        h_next_ts = []
-        h_previous_layer = nn.functional.dropout(emb[i], self.drop_prob)
-        for l in range(self.num_layers):
-            # Recurrent layer
-            a_W = self.linear_W[l](h_previous_layer)
-            a_U = self.linear_U[l](h_previous_ts[l])
-            h_recurrent = self.activation(a_U + a_W)
-            # Fully connected layer
-            h_previous_layer = nn.functional.dropout(h_recurrent, self.drop_prob)
-            # Keep the ref for next ts
-            h_next_ts.append(h_recurrent)
-        h_previous_ts = torch.stack(h_next_ts)
-        logits.append(self.decode(h_previous_layer))
-    return torch.stack(logits), h_previous_ts
+        logits, h_previous_ts = self._forward_single_token_embedding(emb[i], h_previous_ts)
+        seq_logits.append(logits)
+    return torch.stack(seq_logits), h_previous_ts
 
-  def generate(self, input, hidden, generated_seq_len):
+  def _forward_single_token_embedding(self, embedding, h_previous_ts):
+    """
+    Forward pass for a single token embedding given the
+    hidden state at the previous time step
+    """
+    h_next_ts = []
+    h_previous_layer = self.dropout(embedding)
+    for l in range(self.num_layers):
+        # Recurrent layer
+        a_W = self.linear_W[l](h_previous_layer)
+        a_U = self.linear_U[l](h_previous_ts[l])
+        h_recurrent = self.activation(a_U + a_W)
+        # Fully connected layer
+        h_previous_layer = self.dropout(h_recurrent)
+        # Keep the ref for next ts
+        h_next_ts.append(h_recurrent)
+    h_previous_ts = torch.stack(h_next_ts)
+    logits = self.decode(h_previous_layer)
+    return logits, h_previous_ts
+
+  def generate(self, input, hidden, generated_seq_len, device):
     """
     Arguments:
         - input: A mini-batch of input tokens (NOT sequences!)
@@ -149,35 +154,19 @@ class RNN(nn.Module): # Implement a stacked vanilla RNN with Tanh nonlinearities
         - Sampled sequences of tokens
                     shape: (generated_seq_len, batch_size)
     """
-
+    # Model in eval mode
     self.eval()
 
     samples = []
     h_previous_ts = hidden
-    h_next_ts = []
-
     new_input = input
-
     for i in range(generated_seq_len):
-        new_input = new_input.to(torch.device("cuda"))
+        new_input = new_input.to(device)
         emb = self.embedding(new_input)
-        h_previous_layer = emb
-        for l in range(self.num_layers):
-            # Recurrent layer
-            a_W = self.linear_W[l](h_previous_layer)
-            a_U = self.linear_U[l](h_previous_ts[l])
-            h_recurrent = self.activation(a_U + a_W)
-            # Fully connected layer
-            h_previous_layer = self.dropout(self.fc[l](h_recurrent))
-            # Keep the ref for next ts
-            h_next_ts.append(h_recurrent)
-
-        h_previous_ts = torch.stack(h_next_ts)
-
-        sample = h_previous_layer
-        sample = self.softmax(self.decode(sample))
+        import pdb; pdb.set_trace()
+        logits, h_previous_ts = self._forward_single_token_embedding(emb, h_previous_ts)
+        sample = self.softmax(logits)
         sample_index = int(np.argmax(sample.cpu().detach().numpy()))
         samples.append(sample_index)
         new_input[0, 0] = sample_index
-
     return samples

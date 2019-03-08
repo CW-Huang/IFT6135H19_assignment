@@ -116,10 +116,9 @@ class GRU(nn.Module): # Implement a stacked GRU RNN
     self.embedding = nn.Embedding(self.vocab_size, self.emb_size)
     self.decode = nn.Linear(hidden_size,vocab_size)
 
-    self.fc = clones(nn.Linear(hidden_size, emb_size), num_layers)
+    self.fc = clones(nn.Linear(hidden_size, hidden_size), num_layers)
     self.dropout = clones(nn.Dropout(self.drop_prob), num_layers)
     self.softmax = nn.Softmax(dim=2)
-    self.tanh = nn.Tanh()
 
     self.GRU_cells = nn.ModuleList([GRU_cell(emb_size if i == 0 else hidden_size, hidden_size) for i in range(num_layers)])
 
@@ -191,7 +190,7 @@ class GRU(nn.Module): # Implement a stacked GRU RNN
         # Recurrent GRU cell
         h_recurrent = self.GRU_cells[h_index].forward(input,h_previous_ts[h_index])
         # Fully connected layer with dropout
-        h_previous_layer = self.tanh(self.dropout[h_index](self.fc[h_index](h_recurrent)))
+        h_previous_layer = self.dropout[h_index](self.fc[h_index](h_recurrent))
         input = h_previous_layer # used vertically up the layers
         # Keep the ref for next ts
         h_next_ts.append(h_recurrent) # used horizontally across timesteps
@@ -238,7 +237,7 @@ class GRU(nn.Module): # Implement a stacked GRU RNN
         # Recurrent GRU cell
         h_recurrent = self.GRU_cells[h_index].forward(input,h_previous_ts[h_index])
         # Fully connected layer with dropout
-        h_previous_layer = self.tanh(self.dropout[h_index](self.fc[h_index](h_recurrent)))
+        h_previous_layer = self.dropout[h_index](self.fc[h_index](h_recurrent))
         input = h_previous_layer # used vertically up the layers
         # Keep the ref for next ts
         h_next_ts.append(h_recurrent) # used horizontally across timesteps
