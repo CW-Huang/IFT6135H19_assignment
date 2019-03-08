@@ -7,7 +7,6 @@ import math, copy, time
 from torch.autograd import Variable
 import matplotlib.pyplot as plt
 
-# TODO: Generalize to multi-layers
 
 def clones(module, N):
   "A helper function for producing N identical layers (each with their own parameters)."
@@ -74,7 +73,6 @@ class GRU_cell(nn.Module): # Implement a stacked GRU RNN
     """
     batch_size = hidden.size(0)
 
-    # add batch_size as a dimension to bias since I will be adding the bias below (need the dimensions to match)
     bias_rzh_batch = self.bias_rzh.unsqueeze(0).expand(batch_size, self.bias_rzh.size(0))
     W_x = torch.addmm(bias_rzh_batch,inputs,self.W_x)
     U_h_prev = torch.mm(hidden,self.U_h)
@@ -113,20 +111,18 @@ class GRU(nn.Module): # Implement a stacked GRU RNN
     self.batch_size = batch_size
     self.vocab_size = vocab_size
     self.num_layers = num_layers
-    self.dp_keep_prob = dp_keep_prob
+    self.drop_prob = 1 - dp_keep_prob
 
+    self.embedding = nn.Embedding(self.vocab_size, self.emb_size)
     self.decode = nn.Linear(hidden_size,vocab_size)
-    self.tanh = nn.Tanh()
+
     self.fc = clones(nn.Linear(hidden_size, emb_size), num_layers)
-    self.dropout = clones(nn.Dropout(dp_keep_prob), num_layers)
+    self.dropout = clones(nn.Dropout(self.drop_prob), num_layers)
+    self.softmax = nn.Softmax(dim=2)
+    self.tanh = nn.Tanh()
 
-
-    # The size of the input to the first GRU cell is of size embedding size.
-    # The size of the inputs to all other GRU cells is of size hidden size.
-    # There's one GRU cell per hidden layer
     # TODO check copy here
     self.GRU_cells = [GRU_cell(emb_size if i == 0 else hidden_size, hidden_size) for i in range(num_layers)]
-    self.embedding = nn.Embedding(self.vocab_size, self.emb_size)
 
     # Initialization of the parameters of the recurrent and fc layers.
     # Your implementation should support any number of stacked hidden layers
@@ -185,31 +181,26 @@ class GRU(nn.Module): # Implement a stacked GRU RNN
                     shape: (num_layers, batch_size, hidden_size)
     """
     h_previous_ts = hidden
-    h_next_ts = []
     logits = []
-    embeddings = self.embedding(inputs) #(seq_len, batch_size, emb_size)
+    embeddings = self.embedding(inputs)
     for t in range(self.seq_len):
-      input = embeddings[t] #the very first input to a GRU cell is the embedding (#embeddings == #seq_len)
+      h_next_ts = []
+      # TODO
+      # change dropout
+      input = self.dropout[0](embeddings[t])
       for h_index in range(self.num_layers):
+        # Recurrent GRU cell
         h_recurrent = self.GRU_cells[h_index].forward(input,h_previous_ts[h_index])
-        input = h_recurrent # will be used as input to GRU cell at next timestep (vertically up the stacks)
-        # Fully connected layer
-        # TODO
-        # check tanh here
+        # Fully connected layer with dropout
         h_previous_layer = self.tanh(self.dropout[h_index](self.fc[h_index](h_recurrent)))
+        input = h_previous_layer # used vertically up the layers
         # Keep the ref for next ts
-        h_next_ts.append(h_recurrent) # will be used as input to GRU cell at next timestep (horizontally)
+        h_next_ts.append(h_recurrent) # used horizontally across timesteps
       h_previous_ts = torch.stack(h_next_ts)
       logits.append(self.decode(h_previous_layer))
-
-      #hidden[h_index]=h # updating/overriding the hidden layer with output of GRU cell -> problem because can't backprop on this
-
     return torch.stack(logits), h_next_ts
 
-    #return logits.view(self.seq_len, self.batch_size, self.vocab_size), hidden
-
   def generate(self, input, hidden, generated_seq_len): #generate next work using the GRU
-    # TODO ========================
     # Compute the forward pass, as in the self.forward method (above).
     # You'll probably want to copy substantial portions of that code here.
     #
@@ -233,20 +224,32 @@ class GRU(nn.Module): # Implement a stacked GRU RNN
         - Sampled sequences of tokens
                     shape: (generated_seq_len, batch_size)
     """
-    return #samples
+    self.eval()
 
-#used temporarily for testing
-if __name__ == '__main__':
-  # gru_cell = GRU_cell(20,30) #(emb,hidden_size)
-  # inp = torch.rand(5,20) #(batch_size, emb)
-  # hid = torch.zeros(5,30) #(batch_size, hidden_size)
-  #
-  # results = gru_cell.forward(inp,hid)
-  # print(results)
+    samples = []
+    h_previous_ts = hidden
+    new_input = input
 
-  m = nn.Linear(20, 30)
-  print(m)
-  input = torch.randn(128, 20)
-  output = m(input)
-  print(output.size())
+    for t in range(generated_seq_len):
+      h_next_ts = []
+      embedding = self.embedding(new_input)
+      input = embedding
+      for h_index in range(self.num_layers):
+        # Recurrent GRU cell
+        h_recurrent = self.GRU_cells[h_index].forward(input,h_previous_ts[h_index])
+        # Fully connected layer with dropout
+        h_previous_layer = self.tanh(self.dropout[h_index](self.fc[h_index](h_recurrent)))
+        input = h_previous_layer # used vertically up the layers
+        # Keep the ref for next ts
+        h_next_ts.append(h_recurrent) # used horizontally across timesteps
+
+      h_previous_ts = torch.stack(h_next_ts)
+
+      sample = h_previous_layer
+      sample = self.softmax(self.decode(sample))
+      sample_index = int(np.argmax(sample.numpy()))
+      samples.append(sample_index)
+      new_input[0, 0] = sample_index
+
+    return samples
 
