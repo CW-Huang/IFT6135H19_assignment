@@ -224,7 +224,7 @@ def _file_to_word_ids(filename, word_to_id):
 
 # Processes the raw data from text files
 def ptb_raw_data(data_path=None, prefix="ptb"):
-    train_path = os.path.join(data_path, prefix + ".train_1k.txt")
+    train_path = os.path.join(data_path, prefix + ".train.txt")
     valid_path = os.path.join(data_path, prefix + ".valid.txt")
     test_path = os.path.join(data_path, prefix + ".test.txt")
 
@@ -357,7 +357,8 @@ def repackage_hidden(h):
     This is the case with the way we've processed the Penn Treebank dataset.
     """
     if isinstance(h, Variable):
-        return h.detach_()
+        return h.detach()
+        # return h.detach_() TODO
     else:
         return tuple(repackage_hidden(v) for v in h)
 
@@ -394,10 +395,8 @@ def run_epoch(model, data, is_train=False, lr=1.0):
             hidden = repackage_hidden(hidden)
             outputs, hidden = model(inputs, hidden)
 
-        targets = torch.from_numpy(y.astype(np.int64)).transpose(0, 1).contiguous().to(device).cpu()
+        targets = torch.from_numpy(y.astype(np.int64)).transpose(0, 1).contiguous().to(device)#.cpu()
         tt = torch.squeeze(targets.view(-1, model.batch_size * model.seq_len))
-
-        print('targets is on device = ', targets.device)
 
         # LOSS COMPUTATION
         # This line currently averages across all the sequences in a mini-batch 
@@ -405,7 +404,7 @@ def run_epoch(model, data, is_train=False, lr=1.0):
         # For problem 5.3, you will (instead) need to compute the average loss 
         #at each time-step separately. 
         loss = loss_fn(outputs.contiguous().view(-1, model.vocab_size), tt)
-        loss.cuda()
+        loss.to(device)
         costs += loss.data.item() * model.seq_len
         losses.append(costs)
         iters += model.seq_len
@@ -413,6 +412,7 @@ def run_epoch(model, data, is_train=False, lr=1.0):
             print(step, loss)
         if is_train:  # Only update parameters if training 
             loss.backward()
+            # import pdb; pdb.set_trace()
             torch.nn.utils.clip_grad_norm_(model.parameters(), 0.25)
             if args.optimizer == 'ADAM':
                 optimizer.step()
@@ -420,7 +420,7 @@ def run_epoch(model, data, is_train=False, lr=1.0):
                 for p in model.parameters():
                     if p.grad is not None:
                         p.data.add_(-lr, p.grad.data)
-            if step % 1 == 0:
+            if step % 50 == 0:
                 print('batch step: '+ str(step) + '\t' \
                     + 'loss: '+ str(costs) + '\t' \
                     + 'speed (wps):' + str(iters * model.batch_size / (time.time() - start_time)))

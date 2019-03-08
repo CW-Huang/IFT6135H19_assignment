@@ -72,56 +72,27 @@ class RNN(nn.Module):  # Implement a stacked vanilla RNN with Tanh nonlinearitie
         self.vocab_size = vocab_size
         self.num_layers = num_layers
         self.dp_keep_prob = dp_keep_prob
-        self.dropout = nn.Dropout(0.5)
+
+        self.dropout = nn.Dropout(1 - self.dp_keep_prob)
         self.tanh = nn.Tanh()
         self.encoder = nn.Embedding(self.vocab_size, self.emb_size)
         self.decoder = nn.Linear(self.hidden_size, self.vocab_size)
-        self.W = nn.Parameter(torch.zeros(self.num_layers, self.hidden_size, self.hidden_size))
-        self.I = nn.Parameter(torch.zeros(self.num_layers, self.hidden_size, self.hidden_size))
-        self.V = nn.Parameter(torch.zeros(self.vocab_size, self.hidden_size))
-        # self.V = nn.Parameter(torch.zeros(self.hidden_size, self.emb_size))
-        print('w device ', self.W.device)
-        # self.I = nn.Parameter(torch.zeros(self.num_layers, self.hidden_size, self.hidden_size))
 
+        self.W_input = nn.Parameter(torch.randn(self.hidden_size, self.emb_size))
+        self.W_hidden_last_t = nn.Parameter(torch.randn(self.num_layers, self.hidden_size, self.hidden_size))
+        self.W_hidden_previous_layer = nn.Parameter(torch.randn(self.num_layers, self.hidden_size, self.hidden_size))
+        self.W_output = nn.Parameter(torch.zeros(self.vocab_size, self.hidden_size))
 
-        self.V = nn.Parameter(torch.randn(self.vocab_size, self.hidden_size))
-        self.U = nn.Parameter(torch.randn(self.hidden_size, self.emb_size))
+        self.bW_input = nn.Parameter(torch.randn(self.hidden_size, self.batch_size))
+        self.bW_hidden = nn.Parameter(torch.randn(self.hidden_size, self.batch_size))
 
-        print('u device ', self.U.device)
-
-        self.W[0] = torch.randn(self.hidden_size, self.hidden_size)
-
-        for layer in range(1, self.num_layers):
-            self.I[layer] = torch.randn(self.hidden_size, self.hidden_size)
-            self.W[layer] = torch.randn(self.hidden_size, self.hidden_size)
-
-        # if torch.cuda.is_available():
-        #     self.W = self.W.cuda()
-        #     self.I = self.I.cuda()
-        #     self.V = self.V.cuda()
-        #     self.U = self.U.cuda()
-
-        
-
-        # TODO
-        self.bV = torch.zeros(self.hidden_size)
-        self.bW = torch.zeros(self.hidden_size)
-        self.bU = torch.zeros(self.vocab_size)
-        self.init_weights_uniform()
-
+        # self.init_weights_uniform() TODO
 
     def init_weights_uniform(self):
         # TODO ========================
         # Initialize all the weights uniformly in the range [-0.1, 0.1]
         # and all the biases to 0 (in place)
-        # dtype = torch.cuda.float if torch.cuda.is_available() else torch.floatß
-        # self.W = torch.zeros(self.num_layers, self.hidden_size, self.hidden_size)
-        # if torch.cuda.is_available():
-            # self.W = self.W.cuda()
-        print('u init device ', self.U.device)
-        print('w init device ', self.W.device)
-
-
+        print('init_weights_uniform - TODO')
 
     def init_hidden(self):
         # TODO ========================
@@ -168,55 +139,39 @@ class RNN(nn.Module):  # Implement a stacked vanilla RNN with Tanh nonlinearitie
                   if you are curious.
                         shape: (num_layers, batch_size, hidden_size)
         """
-
-        print('w device FOWARD', self.W.device)
-        print('u device FOWARD', self.U.device)
-        print('v device FOWARD', self.V.device)
-        logits = torch.zeros(self.seq_len, self.batch_size, self.vocab_size)
+        if torch.cuda.is_available():
+            logits = torch.zeros(self.seq_len, self.batch_size, self.vocab_size).cuda()
+            hiddens = torch.zeros(self.seq_len, self.num_layers, self.batch_size, self.hidden_size).cuda()
+            input_emb = torch.zeros(self.seq_len, self.batch_size, self.emb_size).cuda()
+        else:
+            logits = torch.zeros(self.seq_len, self.batch_size, self.vocab_size)
+            hiddens = torch.zeros(self.seq_len, self.num_layers, self.batch_size, self.hidden_size)
+            input_emb = torch.zeros(self.seq_len, self.batch_size, self.emb_size)
+        hiddens += hidden
 
         # input_emb = inputs[t][batch]
-        input_emb = self.encoder(inputs)
-        # state = hidden
-
-        # iterate over timestamp
-        # for batch in range(self.batch_size):
-        # for t in range(1, self.seq_len-1):
-
-        #     # compute first
-        #     hidden[0] = torch.transpose(self.tanh(self.U.matmul(torch.transpose(self.encoder(inputs)[t], 0, 1)) + self.W[0].matmul(torch.transpose(hidden[0], 0, 1))), 0, 1)
-
-        #     # compute inner
-        #     # iterate over inner layers
-        #     for layer in range(1, self.num_layers - 1):
-        #         hidden[layer] = torch.transpose(self.tanh(self.I[layer].matmul(torch.transpose(self.dropout(hidden[0]), 0, 1)) + self.W[layer].matmul(torch.transpose(hidden[layer], 0, 1))), 0, 1)
-
-        #     # compute last
-        #     logits[t] = torch.transpose(self.V.matmul(torch.transpose(self.dropout(hidden[layer]), 0, 1)), 0, 1)
-
-        # return logits.view(self.seq_len, self.batch_size, self.vocab_size), hidden
-
-
+        # import pdb; pdb.set_trace()
+        input_emb += self.encoder(inputs)
         for t in range(1, self.seq_len-1):
 
             # compute first
-            previous_net_update = self.W[0].matmul(torch.transpose(hidden[0], 0, 1))
-            state_last_layer = self.U.matmul(torch.transpose(input_emb[t], 0, 1))
-            hidden[0] = torch.transpose(self.tanh(state_last_layer + previous_net_update), 0, 1)
-            # last_state_dropout = self.dropout(hidden[0])
+            # previous_net_update = self.W_hidden_last_t[0].matmul(torch.transpose(hiddens[t][0].clone(), 0, 1))
+            # state_last_layer = self.W_input.matmul(torch.transpose(input_emb[t], 0, 1))
+            hiddens[t][0] += torch.transpose(self.tanh(self.bW_input + self.W_input.matmul(torch.transpose(input_emb[t].clone(), 0, 1)) + self.W_hidden_last_t[0].clone().matmul(torch.transpose(hiddens[t][0].clone(), 0, 1))), 0, 1)
 
             # compute inner
             # iterate over inner layers
-            for layer in range(1, self.num_layers - 1):
-                previous_net_update = self.W[layer].matmul(torch.transpose(hidden[layer], 0, 1))
-                state_last_layer = self.I[layer].matmul(torch.transpose(self.dropout(hidden[0]), 0, 1))
-                hidden[layer] = torch.transpose(self.tanh(state_last_layer + previous_net_update), 0, 1)
-                # state_dropout = self.dropout(hidden[layer])
+            for layer in range(1, self.num_layers):
+                # previous_net_update = self.W_hidden_last_t[layer].matmul(torch.transpose(hiddens[t][layer], 0, 1))
+                # state_last_layer = self.W_hidden_previous_layer[layer].matmul(torch.transpose(self.dropout(hiddens[t][layer - 1]), 0, 1))
+                hiddens[t][layer] += torch.transpose(self.tanh(self.bW_hidden + self.W_hidden_previous_layer[layer].clone().matmul(torch.transpose(self.dropout(hiddens[t][layer - 1].clone()), 0, 1)) + self.W_hidden_last_t[layer].clone().matmul(torch.transpose(hiddens[t][layer].clone(), 0, 1))), 0, 1)
 
+            # import pdb; pdb.set_trace()
             # compute last
-            state_last_layer = self.V.matmul(torch.transpose(self.dropout(hidden[layer]), 0, 1))
-            logits[t] = torch.transpose(state_last_layer, 0, 1)
+            # state_last_layer = self.W_output.matmul(torch.transpose(self.dropout(hiddens[t][self.num_layers - 1]), 0, 1))
+            logits[t] += torch.transpose(self.W_output.matmul(torch.transpose(self.dropout(hiddens[t][self.num_layers - 1].clone()), 0, 1)), 0, 1)
 
-        return logits.view(self.seq_len, self.batch_size, self.vocab_size), hidden
+        return logits.view(self.seq_len, self.batch_size, self.vocab_size), hiddens[self.seq_len - 1]
 
     def generate(self, input, hidden, generated_seq_len):
         # TODO ========================
