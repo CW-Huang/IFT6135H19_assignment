@@ -61,32 +61,31 @@ class RNN(nn.Module): # Implement a stacked vanilla RNN with Tanh nonlinearities
     # Embedding encoder
     self.embedding = nn.Embedding(vocab_size, emb_size)
 
-    # N stacked recurrent layers + fully connected
-    linear_W = nn.Linear(emb_size, hidden_size)
-    self.init_weights_uniform(linear_W)
-    self.linear_W = clones(linear_W, num_layers)
-
-    linear_U = nn.Linear(hidden_size, hidden_size)
-    self.init_weights_uniform(linear_U)
-    self.linear_U = clones(linear_U, num_layers)
-
-    fc = nn.Linear(hidden_size, emb_size)
-    self.init_weights_uniform(fc)
-    self.fc = clones(fc, num_layers)
-
-    self.dropout = nn.Dropout(1 - dp_keep_prob)
-    self.activation = nn.Tanh()
+    # N stacked recurrent layers (first layer has different input size)
+    linear_W = [nn.Linear(emb_size, hidden_size)] + \
+               [nn.Linear(hidden_size, hidden_size) for _ in range(num_layers - 1)]
+    self.linear_W = nn.ModuleList(linear_W)
+    self.linear_U = clones(nn.Linear(hidden_size, hidden_size), num_layers)
 
     # Embedding decoder
     self.decode = nn.Linear(hidden_size, vocab_size)
+
+    self.drop_prob = 1 - dp_keep_prob
+    self.activation = nn.Tanh()
     self.softmax = nn.Softmax(dim=2)
 
-  def init_weights_uniform(self, layer):
+    # Weight initialization (Embedding has no bias)
+    self.init_weights_uniform(self.embedding, init_bias=False)
+    self.init_weights_uniform(self.decode, init_bias=True)
+
+  def init_weights_uniform(self, layer, init_bias=False):
     """
     Initialize all the weights uniformly in the range [-0.1, 0.1]
     and all the biases to 0 (in place)
     """
-    return torch.nn.init.uniform_(layer.weight, a=-.1, b=.1)
+    torch.nn.init.uniform_(layer.weight, a=-0.1, b=0.1)
+    if init_bias:
+        torch.nn.init.constant_(layer.bias, 0)
 
   def init_hidden(self):
     """
@@ -118,19 +117,18 @@ class RNN(nn.Module): # Implement a stacked vanilla RNN with Tanh nonlinearities
                     shape: (num_layers, batch_size, hidden_size)
     """
     h_previous_ts = hidden
-    h_next_ts = []
     logits = []
     emb = self.embedding(inputs)
     for i in range(self.seq_len):
-        h_previous_layer = emb[i]
+        h_next_ts = []
+        h_previous_layer = nn.functional.dropout(emb[i], self.drop_prob)
         for l in range(self.num_layers):
             # Recurrent layer
             a_W = self.linear_W[l](h_previous_layer)
             a_U = self.linear_U[l](h_previous_ts[l])
             h_recurrent = self.activation(a_U + a_W)
             # Fully connected layer
-            # No activation function: https://ift6135forum.slack.com/archives/CGF0C0C4U/p1551478589018100
-            h_previous_layer = self.dropout(self.fc[l](h_recurrent))
+            h_previous_layer = nn.functional.dropout(h_recurrent, self.drop_prob)
             # Keep the ref for next ts
             h_next_ts.append(h_recurrent)
         h_previous_ts = torch.stack(h_next_ts)

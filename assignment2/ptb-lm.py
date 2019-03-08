@@ -421,7 +421,7 @@ def run_epoch(model, data, is_train=False, lr=1.0, id_2_word=None):
                         p.data.add_(-lr, p.grad.data)
             if step % (epoch_size // 10) == 10:
                 print('step: '+ str(step) + '\t' \
-                    + 'loss: '+ str(costs) + '\t' \
+                    + 'loss: '+ str(costs/step) + '\t' \
                     + 'speed (wps):' + str(iters * model.batch_size / (time.time() - start_time)))
                 print_example(targets, outputs, id_2_word, is_train)
     return np.exp(costs / iters), losses
