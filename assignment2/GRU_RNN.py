@@ -116,7 +116,7 @@ class GRU(nn.Module): # Implement a stacked GRU RNN
     self.embedding = nn.Embedding(self.vocab_size, self.emb_size)
     self.decode = nn.Linear(hidden_size,vocab_size)
 
-    self.fc = clones(nn.Linear(hidden_size, emb_size), num_layers)
+    self.fc = clones(nn.Linear(hidden_size, hidden_size), num_layers)
     self.dropout = clones(nn.Dropout(self.drop_prob), num_layers)
     self.softmax = nn.Softmax(dim=2)
     self.tanh = nn.Tanh()
