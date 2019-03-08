@@ -121,8 +121,7 @@ class GRU(nn.Module): # Implement a stacked GRU RNN
     self.softmax = nn.Softmax(dim=2)
     self.tanh = nn.Tanh()
 
-    # TODO check copy here
-    self.GRU_cells = [GRU_cell(emb_size if i == 0 else hidden_size, hidden_size) for i in range(num_layers)]
+    self.GRU_cells = nn.ModuleList([GRU_cell(emb_size if i == 0 else hidden_size, hidden_size) for i in range(num_layers)])
 
     # Initialization of the parameters of the recurrent and fc layers.
     # Your implementation should support any number of stacked hidden layers
