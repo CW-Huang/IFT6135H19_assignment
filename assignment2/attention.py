@@ -13,13 +13,6 @@ def clones(module, N):
     return nn.ModuleList([copy.deepcopy(module) for _ in range(N)])
 
 
-# Problem 3
-##############################################################################
-#
-# Code for the Transformer model
-#
-##############################################################################
-
 """
 Implement the MultiHeadedAttention module of the transformer architecture.
 All other necessary modules have already been implemented for you.
@@ -74,7 +67,6 @@ and a linear layer followed by a softmax.
 
 #----------------------------------------------------------------------------------
 
-# TODO: implement this class
 class MultiHeadedAttention(nn.Module):
     def __init__(self, n_heads, n_units, dropout=0.1):
         """
@@ -93,59 +85,40 @@ class MultiHeadedAttention(nn.Module):
         self.n_units = n_units
         self.n_heads = n_heads
 
-        self.query_layer = nn.Linear(n_units, n_units, bias=False)
-        self.key_layer = nn.Linear(n_units, n_units, bias=False)
-        self.value_layer = nn.Linear(n_units, n_units, bias=False)
+        self.query_layer = nn.Linear(n_units, n_units)
+        self.key_layer = nn.Linear(n_units, n_units)
+        self.value_layer = nn.Linear(n_units, n_units)
 
-        self.out_linear = nn.Linear(n_units, n_units, bias=False)
-        self.batch_norm = nn.BatchNorm1d(n_units)
+        self.fc = nn.Linear(n_units, n_units)
         self.dropout = dropout
 
     def forward(self, query, key, value, mask=None):
+        batch_size = query.size(0)
+
         # query, key, and value all have size: (batch_size, seq_len, self.n_units)
         Q = self.query_layer(query)
         K = self.key_layer(key)
         V = self.value_layer(value)
 
-	# split each Q, K and V into h different values from dim 2
-        # and then merge them back together in dim 0
-
-        Q_split = Q.split(split_size=self.d_k, dim=2)
-        Q = torch.cat(Q_split, dim=0)
+	# split each Q, K and V in self.n_heads
+        Q = torch.cat(Q.split(split_size=self.d_k, dim=2), dim=0)
         K = torch.cat(K.split(split_size=self.d_k, dim=2), dim=0)
         V = torch.cat(V.split(split_size=self.d_k, dim=2), dim=0)
 
-	# calculate QK^T
-        attention = torch.matmul(Q, K.transpose(1, 2))
-	#  normalize with sqrt(dk)
-        attention = attention / np.sqrt(self.d_k)
+        A = torch.matmul(Q, K.transpose(1, 2))
+        A = A / np.sqrt(self.d_k)
 
-        # TODO: Mask values in the softmax
-	# put it to softmax
         if mask is not None:
-            pass
-            #attention = torch.mul(attention, mask) - 1.e10 * (1 - mask)
+            mask = mask.repeat(self.n_heads, 1, 1).float()
+            A = (A * mask) - 1.e10 * (1 - mask)
 
-        attention = F.softmax(attention, dim=-1)
-        # apply dropout
-        attention = F.dropout(attention, self.dropout)
-        # multiplyt it with V
-        attention = torch.matmul(attention, V)
-
-        # TODO: implement the masked multi-head attention.
-        # mask has size: (batch_size, seq_len, seq_len)
-        # As described in the .tex, apply input masking to the softmax
-        # generating the "attention values" (i.e. A_i in the .tex)
-        # Also apply dropout to the attention values.
-
+        A = F.softmax(A, dim=-1)
+        A = F.dropout(A, self.dropout)
+        A = torch.matmul(A, V)
 
         # convert attention back to its input original size
-        restore_chunk_size = int(attention.size(0) / self.n_heads)
-        attention = torch.cat(
-            attention.split(split_size=restore_chunk_size, dim=0), dim=2)
-        return self.out_linear(attention)
-        # TODO: Last linear!
-        # TODO check output size: (batch_size, seq_len, self.n_units)
+        A = torch.cat(A.split(split_size=batch_size, dim=0), dim=2)
+        return self.fc(A)
 
 
 #----------------------------------------------------------------------------------
