@@ -92,7 +92,7 @@ class GRU(nn.Module): # Implement a stacked GRU RNN
   Follow the same instructions as for RNN (above), but use the equations for
   GRU, not Vanilla RNN.
   """
-  def __init__(self, emb_size, hidden_size, seq_len, batch_size, vocab_size, num_layers, dp_keep_prob=0.2):
+  def __init__(self, emb_size, hidden_size, seq_len, batch_size, vocab_size, num_layers, dp_keep_prob):
     """
     emb_size:     The number of units in the input embeddings
     hidden_size:  The number of hidden units per layer
