@@ -111,14 +111,18 @@ class GRU(nn.Module): # Implement a stacked GRU RNN
     self.batch_size = batch_size
     self.vocab_size = vocab_size
     self.num_layers = num_layers
-    self.drop_prob = 1 - dp_keep_prob
 
-    self.embedding = nn.Embedding(self.vocab_size, self.emb_size)
-    self.decode = nn.Linear(hidden_size,vocab_size)
+    self.embedding = nn.Embedding(vocab_size, emb_size)
+    self.decode = nn.Linear(hidden_size, vocab_size)
 
     self.fc = clones(nn.Linear(hidden_size, hidden_size), num_layers)
-    self.dropout = clones(nn.Dropout(self.drop_prob), num_layers)
+    self.dropout = nn.Dropout(1 - dp_keep_prob)
+    #self.dropout = clones(nn.Dropout(self.drop_prob), num_layers)
     self.softmax = nn.Softmax(dim=2)
+
+    # Weight initialization (Embedding has no bias)
+    self.init_weights_uniform(self.embedding, init_bias=False)
+    self.init_weights_uniform(self.decode, init_bias=True)
 
     self.GRU_cells = nn.ModuleList([GRU_cell(emb_size if i == 0 else hidden_size, hidden_size) for i in range(num_layers)])
 
@@ -135,6 +139,15 @@ class GRU(nn.Module): # Implement a stacked GRU RNN
     # for Pytorch to recognize these parameters as belonging to this nn.Module
     # and compute their gradients automatically. You're not obligated to use the
     # provided clones function.
+
+  def init_weights_uniform(self, layer, init_bias=False):
+    """
+    Initialize all the weights uniformly in the range [-0.1, 0.1]
+    and all the biases to 0 (in place)
+    """
+    torch.nn.init.uniform_(layer.weight, a=-0.1, b=0.1)
+    if init_bias:
+        torch.nn.init.constant_(layer.bias, 0)
 
   def init_hidden(self): #called in main in the epoch loop
     # initialize the hidden states to zero
