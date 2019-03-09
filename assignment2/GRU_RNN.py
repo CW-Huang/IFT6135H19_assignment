@@ -196,14 +196,12 @@ class GRU(nn.Module): # Implement a stacked GRU RNN
     embeddings = self.embedding(inputs)
     for t in range(self.seq_len):
       h_next_ts = []
-      # TODO
-      # change dropout
-      input = self.dropout[0](embeddings[t])
+      input = self.dropout(embeddings[t])
       for h_index in range(self.num_layers):
         # Recurrent GRU cell
         h_recurrent = self.GRU_cells[h_index].forward(input,h_previous_ts[h_index])
         # Fully connected layer with dropout
-        h_previous_layer = self.dropout[h_index](self.fc[h_index](h_recurrent))
+        h_previous_layer = self.dropout(self.fc[h_index](h_recurrent))
         input = h_previous_layer # used vertically up the layers
         # Keep the ref for next ts
         h_next_ts.append(h_recurrent) # used horizontally across timesteps
@@ -250,7 +248,7 @@ class GRU(nn.Module): # Implement a stacked GRU RNN
         # Recurrent GRU cell
         h_recurrent = self.GRU_cells[h_index].forward(input,h_previous_ts[h_index])
         # Fully connected layer with dropout
-        h_previous_layer = self.dropout[h_index](self.fc[h_index](h_recurrent))
+        h_previous_layer = self.dropout(self.fc[h_index](h_recurrent))
         input = h_previous_layer # used vertically up the layers
         # Keep the ref for next ts
         h_next_ts.append(h_recurrent) # used horizontally across timesteps
