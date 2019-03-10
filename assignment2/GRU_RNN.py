@@ -115,9 +115,7 @@ class GRU(nn.Module): # Implement a stacked GRU RNN
     self.embedding = nn.Embedding(vocab_size, emb_size)
     self.decode = nn.Linear(hidden_size, vocab_size)
 
-    #self.fc = clones(nn.Linear(hidden_size, hidden_size), num_layers)
     self.dropout = nn.Dropout(1 - dp_keep_prob)
-    #self.dropout = clones(nn.Dropout(self.drop_prob), num_layers)
     self.softmax = nn.Softmax(dim=2)
 
     # Weight initialization (Embedding has no bias)
@@ -149,7 +147,7 @@ class GRU(nn.Module): # Implement a stacked GRU RNN
     if init_bias:
         torch.nn.init.constant_(layer.bias, 0)
 
-  def init_hidden(self): #called in main in the epoch loop
+  def init_hidden(self):
     # initialize the hidden states to zero
     """
     This is used for the first mini-batch in an epoch, only.
@@ -202,7 +200,6 @@ class GRU(nn.Module): # Implement a stacked GRU RNN
         h_recurrent = self.GRU_cells[h_index].forward(input, h_previous_ts[h_index])
         # Fully connected layer with dropout
         h_previous_layer = self.dropout(h_recurrent)
-        #h_previous_layer = self.dropout(self.fc[h_index](h_recurrent))
         input = h_previous_layer # used vertically up the layers
         # Keep the ref for next ts
         h_next_ts.append(h_recurrent) # used horizontally across timesteps
@@ -250,7 +247,6 @@ class GRU(nn.Module): # Implement a stacked GRU RNN
         h_recurrent = self.GRU_cells[h_index].forward(input,h_previous_ts[h_index])
         # Fully connected layer with dropout
         h_previous_layer = self.dropout(h_recurrent)
-        #h_previous_layer = self.dropout(self.fc[h_index](h_recurrent))
         input = h_previous_layer # used vertically up the layers
         # Keep the ref for next ts
         h_next_ts.append(h_recurrent) # used horizontally across timesteps
