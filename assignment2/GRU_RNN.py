@@ -115,7 +115,7 @@ class GRU(nn.Module): # Implement a stacked GRU RNN
     self.embedding = nn.Embedding(vocab_size, emb_size)
     self.decode = nn.Linear(hidden_size, vocab_size)
 
-    self.fc = clones(nn.Linear(hidden_size, hidden_size), num_layers)
+    #self.fc = clones(nn.Linear(hidden_size, hidden_size), num_layers)
     self.dropout = nn.Dropout(1 - dp_keep_prob)
     #self.dropout = clones(nn.Dropout(self.drop_prob), num_layers)
     self.softmax = nn.Softmax(dim=2)
@@ -199,15 +199,15 @@ class GRU(nn.Module): # Implement a stacked GRU RNN
       input = self.dropout(embeddings[t])
       for h_index in range(self.num_layers):
         # Recurrent GRU cell
-        h_recurrent = self.GRU_cells[h_index].forward(input,h_previous_ts[h_index])
+        h_recurrent = self.GRU_cells[h_index].forward(input, h_previous_ts[h_index])
         # Fully connected layer with dropout
+        h_previous_layer = self.dropout(h_recurrent)
         #h_previous_layer = self.dropout(self.fc[h_index](h_recurrent))
-        #input = h_previous_layer # used vertically up the layers
-        input = h_recurrent
+        input = h_previous_layer # used vertically up the layers
         # Keep the ref for next ts
         h_next_ts.append(h_recurrent) # used horizontally across timesteps
       h_previous_ts = torch.stack(h_next_ts)
-      logits.append(self.decode(h_recurrent))
+      logits.append(self.decode(h_previous_layer))
     return torch.stack(logits), h_next_ts
 
   def generate(self, input, hidden, generated_seq_len): #generate next work using the GRU
@@ -249,15 +249,15 @@ class GRU(nn.Module): # Implement a stacked GRU RNN
         # Recurrent GRU cell
         h_recurrent = self.GRU_cells[h_index].forward(input,h_previous_ts[h_index])
         # Fully connected layer with dropout
+        h_previous_layer = self.dropout(h_recurrent)
         #h_previous_layer = self.dropout(self.fc[h_index](h_recurrent))
-        #input = h_previous_layer # used vertically up the layers
-        input = h_recurrent
+        input = h_previous_layer # used vertically up the layers
         # Keep the ref for next ts
         h_next_ts.append(h_recurrent) # used horizontally across timesteps
 
       h_previous_ts = torch.stack(h_next_ts)
 
-      sample = h_recurrent
+      sample = h_previous_layer
       sample = self.softmax(self.decode(sample))
       sample_index = int(np.argmax(sample.cpu().detach().numpy()))
       samples.append(sample_index)
