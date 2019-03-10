@@ -163,7 +163,6 @@ class RNN(nn.Module): # Implement a stacked vanilla RNN with Tanh nonlinearities
     for i in range(generated_seq_len):
         new_input = new_input.to(device)
         emb = self.embedding(new_input)
-        import pdb; pdb.set_trace()
         logits, h_previous_ts = self._forward_single_token_embedding(emb, h_previous_ts)
         sample = self.softmax(logits)
         sample_index = int(np.argmax(sample.cpu().detach().numpy()))
