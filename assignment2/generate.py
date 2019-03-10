@@ -7,8 +7,9 @@ import torch
 from simple_RNN import RNN
 
 GENERATED_SEQ_LEN = 10
+FIRST_WORD = 'because'
 
-MODEL_PATH = 'RNN_ADAM_model_RNN_optimizer_ADAM_initial_lr_0.0001_batch_size_20_seq_len_35_hidden_size_1500_num_layers_2_dp_keep_prob_0.35_save_best_0'
+MODEL_PATH = 'RNN_ADAM_model=RNN_optimizer=ADAM_initial_lr=0.0001_batch_size=20_seq_len=35_hidden_size=1500_num_layers=2_dp_keep_prob=0.35_save_best_0'
 EMB_SIZE = 200
 HIDDEN_SIZE = 1500
 SEQ_LEN = 35
@@ -63,13 +64,12 @@ hidden = hidden.to(device)
 model = model.to(device)
 model.eval()
 
-# Random first input
 _input = torch.zeros([1, 1], dtype=torch.long)
-rand_int = random.randint(0, len(word_to_id))
-_input[0, 0] = rand_int
+first_word_index = word_to_id.get(FIRST_WORD, random.randint(0, len(word_to_id)))
+_input[0, 0] = first_word_index
 
 seq = model.generate(_input, hidden, generated_seq_len=GENERATED_SEQ_LEN, device=device)
 
 print(MODEL_PATH)
-print('>>> first word: \n {}'.format(id_2_word[rand_int]))
+print('>>> first word: \n {}'.format(id_2_word[first_word_index]))
 print('>>> generated seq: \n {}'.format(' '.join([id_2_word[int(i)] for i in seq])))
