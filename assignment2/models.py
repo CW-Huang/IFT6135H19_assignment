@@ -30,14 +30,23 @@ import matplotlib.pyplot as plt
 
 
 def clones(module, N):
-    "A helper function for producing N identical layers (each with their own parameters)."
+    "
+    A helper function for producing N identical layers (each with their own parameters).
+    
+    inputs: 
+        module: a pytorch nn.module
+        N (int): the number of copies of that module to return
+
+    returns:
+        a ModuleList with the copies of the module (the ModuleList is itself also a module)
+    "
     return nn.ModuleList([copy.deepcopy(module) for _ in range(N)])
 
 # Problem 1
 class RNN(nn.Module): # Implement a stacked vanilla RNN with Tanh nonlinearities.
   def __init__(self, emb_size, hidden_size, seq_len, batch_size, vocab_size, num_layers, dp_keep_prob):
     """
-    emb_size:     The numvwe of units in the input embeddings
+    emb_size:     The number of units in the input embeddings
     hidden_size:  The number of hidden units per layer
     seq_len:      The length of the input sequences
     vocab_size:   The number of tokens in the vocabulary (10,000 for Penn TreeBank)
@@ -64,11 +73,14 @@ class RNN(nn.Module): # Implement a stacked vanilla RNN with Tanh nonlinearities
     # and compute their gradients automatically. You're not obligated to use the
     # provided clones function.
 
-  def init_weights_uniform(self):
+  def init_weights(self):
     # TODO ========================
-    # Initialize all the weights uniformly in the range [-0.1, 0.1]
-    # and all the biases to 0 (in place)
-    pass
+
+    # Initialize the embedding and output weights uniformly in the range [-0.1, 0.1]
+    # and output biases to 0 (in place). The embeddings should not use a bias vector.
+    # Initialize all other (i.e. recurrent and linear) weights AND biases uniformly 
+    # in the range [-k, k] where k is the square root of 1/hidden_size
+
 
   def init_hidden(self):
     # TODO ========================
@@ -80,12 +92,13 @@ class RNN(nn.Module): # Implement a stacked vanilla RNN with Tanh nonlinearities
 
   def forward(self, inputs, hidden):
     # TODO ========================
-    # Compute the forward pass, using a nested python for loops.
-    # The outer for loop should iterate over timesteps, and the
-    # inner for loop should iterate over hidden layers of the stack.
-    #
-    # Within these for loops, use the parameter tensors and/or nn.modules you
-    # created in __init__ to compute the recurrent updates according to the
+
+    # Compute the forward pass, using nested python for loops.
+    # The outer for loop should iterate over timesteps, and the 
+    # inner for loop should iterate over hidden layers of the stack. 
+    # 
+    # Within these for loops, use the parameter tensors and/or nn.modules you 
+    # created in __init__ to compute the recurrent updates according to the 
     # equations provided in the .tex of the assignment.
     #
     # Note that those equations are for a single hidden-layer RNN, not a stacked
@@ -251,12 +264,15 @@ class MultiHeadedAttention(nn.Module):
         self.n_units = n_units
 
         # TODO: create/initialize any necessary parameters or layers
-        # Note: the only Pytorch modules you are allowed to use are nn.Linear
+
+        # Initialize all weights and biases uniformly in the range [-k, k],
+        # where k is the square root of 1/n_units.
+        # Note: the only Pytorch modules you are allowed to use are nn.Linear 
         # and nn.Dropout
 
     def forward(self, query, key, value, mask=None):
         # TODO: implement the masked multi-head attention.
-        # query, key, and value all have size: (batch_size, seq_len, self.n_units, self.d_k)
+        # query, key, and value all have size: (batch_size, seq_len, self.n_units)
         # mask has size: (batch_size, seq_len, seq_len)
         # As described in the .tex, apply input masking to the softmax
         # generating the "attention values" (i.e. A_i in the .tex)
