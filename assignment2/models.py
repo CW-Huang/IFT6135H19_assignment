@@ -73,6 +73,15 @@ class RNN(nn.Module): # Implement a stacked vanilla RNN with Tanh nonlinearities
     # and compute their gradients automatically. You're not obligated to use the
     # provided clones function.
 
+    self.emb_size = emb_size  #input size
+    self.hidden_size = hidden_size
+    
+    self.i2h = nn.Linear(emb_size + hidden_size, hidden_size)
+    self.tanh = nn.Tanh()
+    self.h2h = nn.ModuleList([nn.Linear(hidden_size + hidden_size, hidden_size) for i in range(num_layers)])
+
+    self.h2o = nn.Linear(hidden_size + hidden_size, hidden_size)
+    self.dropout = nn.dropout()
   def init_weights(self):
     # TODO ========================
     # Initialize the embedding and output weights uniformly in the range [-0.1, 0.1]
