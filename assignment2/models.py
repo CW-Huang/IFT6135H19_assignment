@@ -75,29 +75,58 @@ class RNN(nn.Module): # Implement a stacked vanilla RNN with Tanh nonlinearities
 
     self.emb_size = emb_size  #input size
     self.hidden_size = hidden_size
-    
-    self.i2h = nn.Linear(emb_size + hidden_size, hidden_size)
-    self.tanh = nn.Tanh()
-    self.h2h = nn.ModuleList([nn.Linear(hidden_size + hidden_size, hidden_size) for i in range(num_layers)])
+    self.seq_len = seq_len
 
+    self.i2e = nn.Linear(seq_len)  #Change to size of input 
+    self.e2h = nn.Linear(emb_size + hidden_size, hidden_size, bias=True)
+    self.h2h = nn.ModuleList([nn.Linear(hidden_size + hidden_size, hidden_size, bias=True) for i in range(num_layers)])
     self.h2o = nn.Linear(hidden_size + hidden_size, hidden_size)
+
+    self.tanh = nn.Tanh()
+    self.softmax = nn.LogSoftmax(dim=1)
+
     self.dropout = nn.dropout()
-  def init_weights(self):
-    # TODO ========================
+  
+  def init_weights(self):  
+    if isinstance(m, nn.Linear):
+        if self.bias is not None:
+            k=1/torch.sqrt(self.hidden_size)
+            m.weight.data.uniform_(-k, k)
+            m.bias.data.uniform_(-k, k)
+        
+        if self.bias is None:#this will be true for the embedding layer
+            m.weight.data.uniform_(-0.1, 0.1)
+        #xavier(m.weight.data)
+        #xavier(m.bias.data)
+        #m.weight.data.fill_(1)
+        #m.bias.data.fill_(0)
+    # TODO 
     # Initialize the embedding and output weights uniformly in the range [-0.1, 0.1]
     # and output biases to 0 (in place). The embeddings should not use a bias vector.
     # Initialize all other (i.e. recurrent and linear) weights AND biases uniformly 
     # in the range [-k, k] where k is the square root of 1/hidden_size
 
   def init_hidden(self):
-    # TODO ========================
+    return  torch.zeros(self.num_layers, self.batch_size, self.hidden_size)
+    # TODO 
     # initialize the hidden states to zero
     """
     This is used for the first mini-batch in an epoch, only.
     """
-    return # a parameter tensor of shape (self.num_layers, self.batch_size, self.hidden_size)
+    # return a parameter tensor of shape (self.num_layers, self.batch_size, self.hidden_size)
 
   def forward(self, inputs, hidden):
+    embeding = self.i2e(inputs) 
+    self.dropout
+
+    combined = torch.cat((embeding, hidden), 1)
+    hidden = self.softmax(self.e2h(combined))
+    self.dropout
+    hidden = self.softmax(self.h2h(combined))
+    self.dropout
+    output = self.softmax(self.h2o(combined))
+    
+    return output, hidden
     # TODO ========================
     # Compute the forward pass, using nested python for loops.
     # The outer for loop should iterate over timesteps, and the 
