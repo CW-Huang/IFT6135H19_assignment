@@ -265,6 +265,7 @@ class MultiHeadedAttention(nn.Module):
         # Note: the only Pytorch modules you are allowed to use are nn.Linear 
         # and nn.Dropout
         # ETA: you can also use softmax
+        # ETA: you can use the "clones" function we provide.
         
     def forward(self, query, key, value, mask=None):
         # TODO: implement the masked multi-head attention.
