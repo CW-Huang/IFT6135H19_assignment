@@ -264,6 +264,7 @@ class MultiHeadedAttention(nn.Module):
         # where k is the square root of 1/n_units.
         # Note: the only Pytorch modules you are allowed to use are nn.Linear 
         # and nn.Dropout
+        # ETA: you can also use softmax
         
     def forward(self, query, key, value, mask=None):
         # TODO: implement the masked multi-head attention.
