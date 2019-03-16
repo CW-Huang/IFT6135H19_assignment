@@ -248,7 +248,7 @@ class MultiHeadedAttention(nn.Module):
     def __init__(self, n_heads, n_units, dropout=0.1):
         """
         n_heads: the number of attention heads
-        n_units: the number of output units
+        n_units: the number of input and output units
         dropout: probability of DROPPING units
         """
         super(MultiHeadedAttention, self).__init__()
@@ -267,7 +267,8 @@ class MultiHeadedAttention(nn.Module):
         
     def forward(self, query, key, value, mask=None):
         # TODO: implement the masked multi-head attention.
-        # query, key, and value all have size: (batch_size, seq_len, self.n_units)
+        # query, key, and value correspond to Q, K, and V in the latex, and 
+        # they all have size: (batch_size, seq_len, self.n_units)
         # mask has size: (batch_size, seq_len, seq_len)
         # As described in the .tex, apply input masking to the softmax 
         # generating the "attention values" (i.e. A_i in the .tex)
