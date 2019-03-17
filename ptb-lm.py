@@ -160,10 +160,10 @@ argsdict['code_file'] = sys.argv[0]
 # Use the model, optimizer, and the flags passed to the script to make the 
 # name for the experimental dir
 print("\n########## Setting Up Experiment ######################")
-flags = [flag.lstrip('--').replace('/', '').replace('\', '') for flag in sys.argv[1:]]
-         experiment_path = os.path.join(args.save_dir + '_'.join([argsdict['model'],
-                                                                  argsdict['optimizer']]
-                                                                 + flags))
+flags = [flag.lstrip('--') for flag in sys.argv[1:]]
+experiment_path = os.path.join(args.save_dir+'_'.join([argsdict['model'],
+                                         argsdict['optimizer']]
+                                         + flags))
 
 # Increment a counter so that previous results with the same args will not
 # be overwritten. Comment out the next four lines if you only want to keep
@@ -185,7 +185,7 @@ with open(os.path.join(experiment_path, 'exp_config.txt'), 'w') as f:
 torch.manual_seed(args.seed)
 
 # Use the GPU if you have one
-if torch.cuda.is_available():
+if not(torch.cuda.is_available()):
     print("Using the GPU")
     device = torch.device("cuda")
 else:
@@ -195,10 +195,7 @@ else:
 
 ###############################################################################
 #
-# 
-LOADING & PROCESSING
-
-
+#LOADING & PROCESSING
 #
 ###############################################################################
 
@@ -360,7 +357,7 @@ def repackage_hidden(h):
     This is the case with the way we've processed the Penn Treebank dataset.
     """
     if isinstance(h, Variable):
-        return h.detach_()
+        return h.detach()
     else:
         return tuple(repackage_hidden(v) for v in h)
 

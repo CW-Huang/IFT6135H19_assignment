@@ -1,10 +1,10 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
+from torch.autograd import Variable
 
 import numpy as np
-import torch.nn.functional as F
 import math, copy, time
-from torch.autograd import Variable
 import matplotlib.pyplot as plt
 
 
@@ -192,7 +192,6 @@ class RNN(nn.Module):  # Implement a stacked vanilla RNN with Tanh nonlinearitie
 
         return logits.view(self.seq_len, self.batch_size, self.vocab_size), hiddens[self.seq_len - 1]
 
-
     def generate(self, input, hidden, generated_seq_len):
         # TODO ========================
         # Compute the forward pass, as in the self.forward method (above).
@@ -231,12 +230,11 @@ class GRU(nn.Module):  # Implement a stacked GRU RNN
 
     def __init__(self, emb_size, hidden_size, seq_len, batch_size, vocab_size, num_layers, dp_keep_prob):
         super(GRU, self).__init__()
-
         # TODO ========================
 
     def init_weights_uniform(self):
-
-    # TODO ========================
+        # TODO ========================
+        print('init_weight_uniform_GRU')
 
     def init_hidden(self):
         # TODO ========================
@@ -323,6 +321,7 @@ class MultiHeadedAttention(nn.Module):
         # This requires the number of n_heads to evenly divide n_units.
         assert n_units % n_heads == 0
         self.n_units = n_units
+        self.n_heads = n_heads
 
         # TODO: create/initialize any necessary parameters or layers
         # Initialize all weights and biases uniformly in the range [-k, k],
@@ -330,6 +329,27 @@ class MultiHeadedAttention(nn.Module):
         # Note: the only Pytorch modules you are allowed to use are nn.Linear 
         # and nn.Dropout
         # ETA: you can also use softmax
+        print('Init')
+        k = np.sqrt(1 / self.n_units)
+        self.linears = clones(nn.Linear(n_units, n_units), int(self.n_heads / 2))
+        self.dropout = nn.Dropout(p=dropout)
+
+        self.WQ = nn.Parameter(torch.empty(n_units, self.d_k).uniform_(-k, k))
+        self.WK = nn.Parameter(torch.empty(n_units, self.d_k).uniform_(-k, k))
+        self.WV = nn.Parameter(torch.empty(n_units, self.d_k).uniform_(-k, k))
+        self.bQ = nn.Parameter(torch.zeros(n_units))
+        self.bK = nn.Parameter(torch.zeros(n_units))
+        self.bV = nn.Parameter(torch.zeros(n_units))
+
+    def attention(self, query, key, value, mask=None, dropout=None):
+        "Compute the scaled dot product attention"
+        scores = torch.matmul(query, key.transpose(-2, -1)) / np.sqrt(self.d_k)
+        if mask is not None:
+            scores = scores.masked_fill(mask == 0, -1e9)  # Avoid numerical instability
+        p_attn = F.softmax(scores, dim=-1)
+        if dropout is not None:
+            p_attn = dropout(p_attn)
+        return torch.matmul(p_attn, value)
 
     def forward(self, query, key, value, mask=None):
         # TODO: implement the masked multi-head attention.
@@ -339,8 +359,17 @@ class MultiHeadedAttention(nn.Module):
         # As described in the .tex, apply input masking to the softmax 
         # generating the "attention values" (i.e. A_i in the .tex)
         # Also apply dropout to the attention values.
+        if mask is not None:
+            # Same mask applied to all h heads.
+            mask = mask.unsqueeze(1)
+        num_batches = query.size(0)
 
-        return  # size: (batch_size, seq_len, self.n_units)
+        query, key, value = [f(x).view(num_batches, -1, self.n_heads, self.d_k).transpose(1, 2) for f, x in
+                             zip(self.linears, (query, key, value))]
+        x = self.attention(query, key, value, dropout=self.dropout)
+        x = x.transpose(1, 2).contiguous().view(num_batches, -1, self.n_heads * self.d_k)
+
+        return self.linears[-1](x)  # size: (batch_size, seq_len, self.n_units)
 
 
 # ----------------------------------------------------------------------------------
