@@ -236,7 +236,7 @@ def ptb_raw_data(data_path=None, prefix="ptb"):
 def ptb_iterator(raw_data, batch_size, num_steps):
     raw_data = np.array(raw_data, dtype=np.int32)
 
-    data_len = len(raw_data)
+    data_len = int(len(raw_data)/100)
     batch_len = data_len // batch_size
     data = np.zeros([batch_size, batch_len], dtype=np.int32)
     for i in range(batch_size):
@@ -413,7 +413,7 @@ def run_epoch(model, data, is_train=False, lr=1.0):
                         p.data.add_(-lr, p.grad.data)
             if step % (epoch_size // 10) == 10:
                 print('step: '+ str(step) + '\t' \
-                    + "loss (sum over all examples' seen this epoch)": '+ str(costs) + '\t' \
+                    + "loss (sum over all examples' seen this epoch): "+ str(costs) + '\t' \
                     + 'speed (wps):' + str(iters * model.batch_size / (time.time() - start_time)))
     return np.exp(costs / iters), losses
 

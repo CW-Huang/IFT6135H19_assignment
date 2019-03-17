@@ -1,4 +1,4 @@
-import torch 
+import torch
 import torch.nn as nn
 
 import numpy as np
@@ -30,7 +30,7 @@ import matplotlib.pyplot as plt
 
 
 def clones(module, N):
-    "
+    """
     A helper function for producing N identical layers (each with their own parameters).
     
     inputs: 
@@ -39,7 +39,7 @@ def clones(module, N):
 
     returns:
         a ModuleList with the copies of the module (the ModuleList is itself also a module)
-    "
+    """
     return nn.ModuleList([copy.deepcopy(module) for _ in range(N)])
 
 # Problem 1
@@ -73,60 +73,104 @@ class RNN(nn.Module): # Implement a stacked vanilla RNN with Tanh nonlinearities
     # and compute their gradients automatically. You're not obligated to use the
     # provided clones function.
 
+    
     self.emb_size = emb_size  #input size
     self.hidden_size = hidden_size
     self.seq_len = seq_len
+    self.vocab_size = vocab_size
+    self.batch_size = batch_size
+    self.num_layers = num_layers
+    self.dp_keep_prob = dp_keep_prob
 
-    self.i2e = nn.Linear(seq_len)  #Change to size of input 
-    self.e2h = nn.Linear(emb_size + hidden_size, hidden_size, bias=True)
-    self.h2h = nn.ModuleList([nn.Linear(hidden_size + hidden_size, hidden_size, bias=True) for i in range(num_layers)])
-    self.h2o = nn.Linear(hidden_size + hidden_size, hidden_size)
+    self.embedding = WordEmbedding(self.emb_size, vocab_size)
+    self.i2e = self.embedding
+    #convert embedding to hidden size for input to recurrent layer
+    self.e2h = nn.Linear(self.emb_size, hidden_size, bias=False)  
 
+    # a(t)= b + W h(t−1)+ Ux(t)
+    self.layer = nn.Linear(hidden_size, hidden_size, bias=False)
+    self.h2h = nn.ModuleList([self.e2h]+[copy.deepcopy(self.layer) for _ in range(num_layers-1)])#clones(nn.Linear(hidden_size, hidden_size, bias=True), num_layers)# Ux(t)
+    self.h2h_next = clones(nn.Linear(hidden_size, hidden_size, bias=True), num_layers) # b + W h(t−1)
+
+    # h(t)= tanh(a(t))
     self.tanh = nn.Tanh()
-    self.softmax = nn.LogSoftmax(dim=1)
+    self.dropout = nn.Dropout(1 - dp_keep_prob)
 
-    self.dropout = nn.dropout()
+    # o(t)= c + V h(t)
+    self.h2o = nn.Linear(hidden_size, vocab_size, bias=True)
+    #self.h2h = nn.ModuleList([nn.Linear(hidden_size, hidden_size, bias=True) for i in range(num_layers)])
+
+    #self.dropout = nn.dropout
   
-  def init_weights(self):  
-    if isinstance(m, nn.Linear):
-        if self.bias is not None:
-            k=1/torch.sqrt(self.hidden_size)
-            m.weight.data.uniform_(-k, k)
-            m.bias.data.uniform_(-k, k)
-        
-        if self.bias is None:#this will be true for the embedding layer
-            m.weight.data.uniform_(-0.1, 0.1)
-        #xavier(m.weight.data)
-        #xavier(m.bias.data)
-        #m.weight.data.fill_(1)
-        #m.bias.data.fill_(0)
+    # m == self.h2o errors out if you call this before assigning self.h2o
+    self.init_weights(self.e2h)
+    self.init_weights(self.h2o)
+    self.h2h.apply(self.init_weights)
+    self.h2h_next.apply(self.init_weights)
+  
+  def init_weights(self,m):  
     # TODO 
     # Initialize the embedding and output weights uniformly in the range [-0.1, 0.1]
     # and output biases to 0 (in place). The embeddings should not use a bias vector.
     # Initialize all other (i.e. recurrent and linear) weights AND biases uniformly 
     # in the range [-k, k] where k is the square root of 1/hidden_size
+    if isinstance(m, nn.Linear):
+            #print("weights = ",m)
+   
+            if m == self.h2o:
+                m.weight.data.uniform_(-0.1, 0.1)
+                m.bias.data.fill_(0)
+                #print(m, m.weight.data,  m.bias.data)
+                
+            elif m.bias is not None:
+                k=1/np.sqrt(self.hidden_size)
+                m.weight.data.uniform_(-k, k)
+                m.bias.data.uniform_(-k, k)
+                #print(m, m.weight.data,  m.bias.data)
+            elif m.bias is None: #this will be true for the embedding layer
+                m.weight.data.uniform_(-0.1, 0.1)
+                #print(m, m.weight.data)
 
   def init_hidden(self):
-    return  torch.zeros(self.num_layers, self.batch_size, self.hidden_size)
     # TODO 
     # initialize the hidden states to zero
     """
     This is used for the first mini-batch in an epoch, only.
     """
     # return a parameter tensor of shape (self.num_layers, self.batch_size, self.hidden_size)
+    #weight = next(self.parameters()).data
+    #return Variable(weight.new(self.num_layers, self.batch_size, self.emb_size).zero_())
+    return  Variable(torch.zeros(self.num_layers, self.batch_size, self.hidden_size))
+
 
   def forward(self, inputs, hidden):
-    embeding = self.i2e(inputs) 
-    self.dropout
+    output_arr = []
+    next_hidden = []
 
-    combined = torch.cat((embeding, hidden), 1)
-    hidden = self.softmax(self.e2h(combined))
-    self.dropout
-    hidden = self.softmax(self.h2h(combined))
-    self.dropout
-    output = self.softmax(self.h2o(combined))
-    
-    return output, hidden
+    for t in range(self.seq_len):
+        embedding = self.i2e(inputs[t,:])
+        #e_to_h = self.e2h(embedding)
+
+        previous_h = embedding
+        for i in range(self.num_layers):
+            # a(t)= b + W h(t−1)+ Ux(t)
+            h2h = self.h2h[i](previous_h) # Ux(t)
+
+            h2h_next = self.h2h_next[i](hidden[i]) # b + W h(t−1)
+
+            next_h = h2h + h2h_next
+
+            # h(t)= tanh(a(t))
+            next_hidden.append(self.tanh(next_h))
+
+            #output of this layer is input of next layer
+            previous_h = next_hidden[i]
+
+        output_arr.append(self.h2o(previous_h))
+    output = torch.cat(output_arr, dim = 0)
+    logits = output.view(self.seq_len, self.batch_size, self.vocab_size), hidden
+    return output, next_hidden 
+
     # TODO ========================
     # Compute the forward pass, using nested python for loops.
     # The outer for loop should iterate over timesteps, and the 
@@ -206,19 +250,20 @@ class GRU(nn.Module): # Implement a stacked GRU RNN
 
   def init_weights_uniform(self):
     # TODO ========================
+    pass
 
   def init_hidden(self):
     # TODO ========================
-    return # a parameter tensor of shape (self.num_layers, self.batch_size, self.hidden_size)
-
+    #return # a parameter tensor of shape (self.num_layers, self.batch_size, self.hidden_size)
+    pass
   def forward(self, inputs, hidden):
     # TODO ========================
-    return logits.view(self.seq_len, self.batch_size, self.vocab_size), hidden
-
+    # return logits.view(self.seq_len, self.batch_size, self.vocab_size), hidden
+    pass
   def generate(self, input, hidden, generated_seq_len):
     # TODO ========================
-    return samples
-
+    #return samples
+    pass
 
 # Problem 3
 ##############################################################################
