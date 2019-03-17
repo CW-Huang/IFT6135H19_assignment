@@ -329,9 +329,8 @@ class MultiHeadedAttention(nn.Module):
         # Note: the only Pytorch modules you are allowed to use are nn.Linear 
         # and nn.Dropout
         # ETA: you can also use softmax
-        print('Init')
         k = np.sqrt(1 / self.n_units)
-        self.linears = clones(nn.Linear(n_units, n_units), int(self.n_heads / 2))
+        self.linears = clones(nn.Linear(n_units, n_units), 4)
         self.dropout = nn.Dropout(p=dropout)
 
         self.WQ = nn.Parameter(torch.empty(n_units, self.d_k).uniform_(-k, k))
@@ -366,7 +365,7 @@ class MultiHeadedAttention(nn.Module):
 
         query, key, value = [f(x).view(num_batches, -1, self.n_heads, self.d_k).transpose(1, 2) for f, x in
                              zip(self.linears, (query, key, value))]
-        x = self.attention(query, key, value, dropout=self.dropout)
+        x = self.attention(query, key, value, mask=mask, dropout=self.dropout)
         x = x.transpose(1, 2).contiguous().view(num_batches, -1, self.n_heads * self.d_k)
 
         return self.linears[-1](x)  # size: (batch_size, seq_len, self.n_units)

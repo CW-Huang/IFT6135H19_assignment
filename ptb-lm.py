@@ -185,7 +185,7 @@ with open(os.path.join(experiment_path, 'exp_config.txt'), 'w') as f:
 torch.manual_seed(args.seed)
 
 # Use the GPU if you have one
-if torch.cuda.is_available():
+if not(torch.cuda.is_available()):
     print("Using the GPU")
     device = torch.device("cuda")
 else:
