@@ -266,6 +266,7 @@ class MultiHeadedAttention(nn.Module):
         # and nn.Dropout
         # ETA: you can also use softmax
         # ETA: you can use the "clones" function we provide.
+        # ETA: you can use masked_fill
         
     def forward(self, query, key, value, mask=None):
         # TODO: implement the masked multi-head attention.
