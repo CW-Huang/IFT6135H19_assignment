@@ -43,6 +43,9 @@ def clones(module, N):
     """
     return nn.ModuleList([copy.deepcopy(module) for _ in range(N)])
 
+def clones_param(module, N):
+  return nn.ParameterList([copy.deepcopy(module) for _ in range(N)])
+
 
 # Problem 1
 class RNN(nn.Module):  # Implement a stacked vanilla RNN with Tanh nonlinearities.
@@ -333,12 +336,14 @@ class MultiHeadedAttention(nn.Module):
         self.linears = clones(nn.Linear(n_units, n_units), 4)
         self.dropout = nn.Dropout(p=dropout)
 
-        self.WQ = nn.Parameter(torch.empty(n_units, self.d_k).uniform_(-k, k))
-        self.WK = nn.Parameter(torch.empty(n_units, self.d_k).uniform_(-k, k))
-        self.WV = nn.Parameter(torch.empty(n_units, self.d_k).uniform_(-k, k))
+        self.WQ = clones_param(nn.Parameter(torch.empty(n_units, self.d_k).uniform_(-k, k)), n_heads)
+        self.WK = clones_param(nn.Parameter(torch.empty(n_units, self.d_k).uniform_(-k, k)), n_heads)
+        self.WV = clones_param(nn.Parameter(torch.empty(n_units, self.d_k).uniform_(-k, k)), n_heads)
+        self.Wout = nn.Parameter(torch.empty(n_units, n_units).uniform_(-k, k)) # different dimensions
         self.bQ = nn.Parameter(torch.zeros(n_units))
         self.bK = nn.Parameter(torch.zeros(n_units))
         self.bV = nn.Parameter(torch.zeros(n_units))
+        self.bout = nn.Parameter(torch.zeros(n_units))
 
     def attention(self, query, key, value, mask=None, dropout=None):
         "Compute the scaled dot product attention"
@@ -361,14 +366,30 @@ class MultiHeadedAttention(nn.Module):
         if mask is not None:
             # Same mask applied to all h heads.
             mask = mask.unsqueeze(1)
-        num_batches = query.size(0)
+        batch_size = query.size(0)
 
-        query, key, value = [f(x).view(num_batches, -1, self.n_heads, self.d_k).transpose(1, 2) for f, x in
-                             zip(self.linears, (query, key, value))]
-        x = self.attention(query, key, value, mask=mask, dropout=self.dropout)
-        x = x.transpose(1, 2).contiguous().view(num_batches, -1, self.n_heads * self.d_k)
+        # query, key, value = [f(x).view(batch_size, -1, self.n_heads, self.d_k).transpose(1, 2) for f, x in
+        #                      zip(self.linears, (query, key, value))]
+        batch_size = query.size(0)
+        seq_len = query.size(1)
+        q = torch.matmul(query, self.WQ[0])
+        k = torch.matmul(key, self.WK[0])
+        v = torch.matmul(value, self.WV[0])
 
-        return self.linears[-1](x)  # size: (batch_size, seq_len, self.n_units)
+        for head in range(1, self.n_heads):
+            q = torch.cat((q, torch.matmul(query, self.WQ[head])), 1)
+            k = torch.cat((k, torch.matmul(key, self.WK[head])), 1)
+            v = torch.cat((v, torch.matmul(value, self.WV[head])), 1)
+
+        q = q.view(batch_size, self.n_heads, seq_len, self.d_k)
+        k = k.view(batch_size, self.n_heads, seq_len, self.d_k)
+        v = v.view(batch_size, self.n_heads, seq_len, self.d_k)
+
+        x = self.attention(q, k, v, mask=mask, dropout=self.dropout)
+
+        x = x.transpose(1, 2).contiguous().view(batch_size, -1, self.n_heads * self.d_k)
+
+        return torch.matmul(x, self.Wout) # self.linears[-1](x)
 
 
 # ----------------------------------------------------------------------------------
