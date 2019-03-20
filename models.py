@@ -366,30 +366,30 @@ class MultiHeadedAttention(nn.Module):
         if mask is not None:
             # Same mask applied to all h heads.
             mask = mask.unsqueeze(1)
-        batch_size = query.size(0)
 
-        # query, key, value = [f(x).view(batch_size, -1, self.n_heads, self.d_k).transpose(1, 2) for f, x in
-        #                      zip(self.linears, (query, key, value))]
         batch_size = query.size(0)
         seq_len = query.size(1)
+
+        # Linear transformations
         q = torch.matmul(query, self.WQ[0])
         k = torch.matmul(key, self.WK[0])
         v = torch.matmul(value, self.WV[0])
-
         for head in range(1, self.n_heads):
             q = torch.cat((q, torch.matmul(query, self.WQ[head])), 1)
             k = torch.cat((k, torch.matmul(key, self.WK[head])), 1)
             v = torch.cat((v, torch.matmul(value, self.WV[head])), 1)
-
         q = q.view(batch_size, self.n_heads, seq_len, self.d_k)
         k = k.view(batch_size, self.n_heads, seq_len, self.d_k)
         v = v.view(batch_size, self.n_heads, seq_len, self.d_k)
 
+        # Softmax and mask
         x = self.attention(q, k, v, mask=mask, dropout=self.dropout)
 
+        # Concatenation
         x = x.transpose(1, 2).contiguous().view(batch_size, -1, self.n_heads * self.d_k)
 
-        return torch.matmul(x, self.Wout) # self.linears[-1](x)
+        # Linear transformation for output of next encoder
+        return torch.matmul(x, self.Wout)
 
 
 # ----------------------------------------------------------------------------------
