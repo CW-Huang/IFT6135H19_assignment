@@ -8,16 +8,18 @@ from torch import nn
 # from torch.functional import F
 from torch.optim import Adam
 
+image_transform = transforms.Compose([
+    transforms.ToTensor(),
+    transforms.Normalize((.5, .5, .5),
+                         (.5, .5, .5))
+])
+
 
 def get_data_loader(dataset_location, batch_size):
-    transform = transforms.Compose([
-        transforms.ToTensor(),
-        transforms.Normalize((0., 0., 0.), (1., 1., 1.))
-    ])
     trainvalid = torchvision.datasets.SVHN(
         dataset_location, split='train',
         download=True,
-        transform=transform
+        transform=image_transform
     )
 
     trainset_size = int(len(trainvalid) * 0.9)
@@ -42,7 +44,7 @@ def get_data_loader(dataset_location, batch_size):
         torchvision.datasets.SVHN(
             dataset_location, split='test',
             download=True,
-            transform=transform
+            transform=image_transform
         ),
         batch_size=batch_size,
     )
