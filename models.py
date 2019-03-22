@@ -340,9 +340,9 @@ class MultiHeadedAttention(nn.Module):
         self.WK = clones_param(nn.Parameter(torch.empty(n_units, self.d_k).uniform_(-k, k)), n_heads)
         self.WV = clones_param(nn.Parameter(torch.empty(n_units, self.d_k).uniform_(-k, k)), n_heads)
         self.Wout = nn.Parameter(torch.empty(n_units, n_units).uniform_(-k, k)) # different dimensions
-        self.bQ = nn.Parameter(torch.zeros(n_units))
-        self.bK = nn.Parameter(torch.zeros(n_units))
-        self.bV = nn.Parameter(torch.zeros(n_units))
+        self.bQ = nn.Parameter(torch.zeros(self.d_k))
+        self.bK = nn.Parameter(torch.zeros(self.d_k))
+        self.bV = nn.Parameter(torch.zeros(self.d_k))
         self.bout = nn.Parameter(torch.zeros(n_units))
 
     def attention(self, query, key, value, mask=None, dropout=None):
@@ -375,9 +375,9 @@ class MultiHeadedAttention(nn.Module):
         k = torch.matmul(key, self.WK[0])
         v = torch.matmul(value, self.WV[0])
         for head in range(1, self.n_heads):
-            q = torch.cat((q, torch.matmul(query, self.WQ[head])), 1)
-            k = torch.cat((k, torch.matmul(key, self.WK[head])), 1)
-            v = torch.cat((v, torch.matmul(value, self.WV[head])), 1)
+            q = torch.cat((q, torch.matmul(query, self.WQ[head]) + self.bQ), 1)
+            k = torch.cat((k, torch.matmul(key, self.WK[head])+ self.bK), 1)
+            v = torch.cat((v, torch.matmul(value, self.WV[head]) + self.bV), 1)
         q = q.view(batch_size, self.n_heads, seq_len, self.d_k)
         k = k.view(batch_size, self.n_heads, seq_len, self.d_k)
         v = v.view(batch_size, self.n_heads, seq_len, self.d_k)
@@ -389,7 +389,7 @@ class MultiHeadedAttention(nn.Module):
         x = x.transpose(1, 2).contiguous().view(batch_size, -1, self.n_heads * self.d_k)
 
         # Linear transformation for output of next encoder
-        return torch.matmul(x, self.Wout)
+        return torch.matmul(x, self.Wout) + self.bout
 
 
 # ----------------------------------------------------------------------------------
