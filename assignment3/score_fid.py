@@ -4,13 +4,26 @@ import torchvision
 import torchvision.transforms as transforms
 import torch
 import classify_svhn
-import numpy as np
 from classify_svhn import Classifier
 
 SVHN_PATH = "svhn"
+PROCESS_BATCH_SIZE = 32
 
 
 def get_sample_loader(path, batch_size):
+    """
+    Loads data from `[path]/samples`
+
+    - Ensure that path contains only one directory
+      (This is due ot how the ImageFolder dataset loader
+       works)
+    - Ensure that ALL of your images are 32 x 32.
+      The transform in this function will rescale it to
+      32 x 32 if this is not the case.
+
+    Returns an iterator over the tensors of the images
+    of dimension (batch_size, 3, 32, 32)
+    """
     data = torchvision.datasets.ImageFolder(
         path,
         transform=transforms.Compose([
@@ -27,6 +40,13 @@ def get_sample_loader(path, batch_size):
 
 
 def get_test_loader(batch_size):
+    """
+    Downloads (if it doesn't already exist) SVHN test into
+    [pwd]/svhn.
+
+    Returns an iterator over the tensors of the images
+    of dimension (batch_size, 3, 32, 32)
+    """
     testset = torchvision.datasets.SVHN(
         SVHN_PATH, split='test',
         download=True,
@@ -45,7 +65,6 @@ def extract_features(classifier, data_loader):
     """
     with torch.no_grad():
         for x, _ in data_loader:
-            print(x.size())
             h = classifier.extract_features(x).numpy()
             for i in range(h.shape[0]):
                 yield h[i]
@@ -53,8 +72,13 @@ def extract_features(classifier, data_loader):
 
 def calculate_fid_score(sample_feature_iterator,
                         testset_feature_iterator):
-    raise NotImplementedError("TO BE IMPLEMENTED."
-                              "Part of Assignment 3 Quantitative Evaluations")
+    """
+    To be implemented by you!
+    """
+    raise NotImplementedError(
+        "TO BE IMPLEMENTED."
+        "Part of Assignment 3 Quantitative Evaluations"
+    )
 
 
 if __name__ == "__main__":
@@ -75,14 +99,15 @@ if __name__ == "__main__":
         quit = True
     if quit:
         exit()
-
+    print("Test")
     classifier = torch.load(args.model, map_location='cpu')
     classifier.eval()
 
-    sample_loader = get_sample_loader(args.directory, 32)
+    sample_loader = get_sample_loader(args.directory,
+                                      PROCESS_BATCH_SIZE)
     sample_f = extract_features(classifier, sample_loader)
 
-    test_loader = get_test_loader(32)
+    test_loader = get_test_loader(PROCESS_BATCH_SIZE)
     test_f = extract_features(classifier, test_loader)
 
     fid_score = calculate_fid_score(sample_f, test_f)

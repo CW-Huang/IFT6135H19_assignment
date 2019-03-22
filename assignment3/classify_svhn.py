@@ -72,10 +72,10 @@ class Classifier(nn.Module):
             nn.Dropout2d(p=0.1),
             nn.MaxPool2d(2),
 
-            nn.Conv2d(32, 32, 3, padding=1),
+            nn.Conv2d(32, 64, 3, padding=1),
             nn.ELU(),
             nn.Dropout2d(p=0.1),
-            nn.Conv2d(32, 128, 3, padding=1),
+            nn.Conv2d(64, 128, 3, padding=1),
             nn.ELU(),
             nn.Dropout2d(p=0.1),
             nn.MaxPool2d(2),
@@ -88,9 +88,9 @@ class Classifier(nn.Module):
             nn.Dropout(0.5),
             nn.Linear(512, 10),
         )
-        for p in self.parameters():
-            if p.dim() > 1:
-                nn.init.xavier_uniform_(p)
+        # for p in self.parameters():
+        #     if p.dim() > 1:
+        #         nn.init.xavier_uniform_(p)
 
     def forward(self, x):
         return self.mlp(self.extract_features(x))
