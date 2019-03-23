@@ -19,6 +19,15 @@ def distribution3(batch_size=1):
     while True:
         yield(np.random.normal(0, 1, (batch_size, 2)))
 
+e = lambda x: np.exp(x)
+tanh = lambda x: (e(x) - e(-x)) / (e(x)+e(-x))
+def distribution4(batch_size=1):
+    # arbitrary sampler
+    f = lambda x: tanh(x*2+1) + x*0.75
+    while True:
+        yield(f(np.random.normal(0, 1, (batch_size, 1))))
+
+
 
 if __name__ == '__main__':
     # Example of usage
