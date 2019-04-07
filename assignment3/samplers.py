@@ -15,9 +15,9 @@ def distribution2(batch_size=512):
 
 
 def distribution3(batch_size=512):
-    # High dimension gaussian distribution
+    # 1D gaussian distribution
     while True:
-        yield(np.random.normal(0, 1, (batch_size, 2)))
+        yield(np.random.normal(0, 1, (batch_size, 1)))
 
 e = lambda x: np.exp(x)
 tanh = lambda x: (e(x) - e(-x)) / (e(x)+e(-x))
