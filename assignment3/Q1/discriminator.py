@@ -1,10 +1,9 @@
-import numpy as np
 import torch
 import torch.nn as nn
 from torch.optim import SGD
 import torch.nn.functional as F
 from torch.autograd.variable import Variable
-from torch.autograd import torch_grad
+from torch.autograd import grad as torch_grad
 
 import samplers
 
