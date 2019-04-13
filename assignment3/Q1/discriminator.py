@@ -98,16 +98,3 @@ def train(p, q, D, loss_func='JSD', l=15, optimizer=SGD(lr=1e-3), n_epochs=50):
         optimizer.step()
 
     return D
-
-def gradient_penalty(real, fake):
-    batch_size = real.size()[0]
-
-    alpha = torch.rand(batch_size, 1)
-    alpha = alpha.expand_as(real)
-    alpha.to(device)
-
-    interpolated = alpha*real.data + (1-alpha)*fake.data
-    interpolated = Variable(interpolated, requires_grad=True)
-    interpolated.to(device)
-
-    prob
