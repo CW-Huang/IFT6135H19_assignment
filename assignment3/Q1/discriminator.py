@@ -71,7 +71,7 @@ def gradient_penalty(discriminator x, y, bs):
 
     return ((grads_norm - 1) ** 2).mean())
 
-def train(p, q, D, loss_func='JSD', l=15, optimizer=SGD(lr=1e-3), n_epochs=50):
+def train(p, q, D, loss_func='JSD', lmbd=15, optimizer=SGD(lr=1e-3), n_epochs=50):
     """
     Function to train the discriminator
     """
@@ -90,7 +90,7 @@ def train(p, q, D, loss_func='JSD', l=15, optimizer=SGD(lr=1e-3), n_epochs=50):
             y = F.sigmoid(y)
             loss = JSD(x, y)
         elif loss_func == 'WD':
-            loss = WD(D, x, y, bs, l)
+            loss = WD(D, x, y, bs, lmbd)
         loss.backward()
         optimizer.step()
 
