@@ -36,8 +36,8 @@ class VAE(nn.Module):
                     nn.AvgPool2d(kernel_size=2, stride=2),
                     nn.ELU()
                     )
-        self.linear1 = nn.Linear(256, self.L*2)
-        self.linear2 = nn.Linear(self.L, 256)
+        self.params = nn.Linear(256, self.L*2)
+        self.linear = nn.Linear(self.L, 256)
         self.decoder = nn.Sequential(
                     nn.ELU(),
                     nn.Conv2d(256, 64, kernel_size=5, padding=4),
@@ -53,10 +53,9 @@ class VAE(nn.Module):
                     nn.Conv2d(16, 1, kernel_size=3, padding=2)
                     )
 
-
     def encode(self, x):
         x = self.encoder(x)
-        return self.linear1(x.view(-1, 256))
+        return self.params(x.view(-1, 256))
 
     def reparameterize(self, q_params):
         mu, log_sigma = q_params[:,:self.L], q_params[:,self.L:]
@@ -66,7 +65,7 @@ class VAE(nn.Module):
         return z, mu, sigma
 
     def decode(self, z):
-        z = self.linear2(z)
+        z = self.linear(z)
         return self.decoder(z.view(-1, 256, 1, 1))
 
     def forward(self, x):
@@ -81,10 +80,10 @@ def ELBO(x, recon_x, mu, log_sigma):
     Function that computes the negative ELBO
     """
     # Compute KL Divergence
-    kld = 0.5 * (-1. - 2.*log_sigma + torch.exp(log_sigma)**2. + mu**2.).sum(dim=1)
+    kl = 0.5 * (-1. - 2.*log_sigma + torch.exp(log_sigma)**2. + mu**2.).sum(dim=1)
     # Compute reconstruction error
-    bce = F.binary_cross_entropy_with_logits(recon_x.view(-1, 784), x.view(-1, 784)).sum(dim=-1)
-    return -(bce - kld).mean()
+    logp_z = F.binary_cross_entropy_with_logits(recon_x.view(-1, 784), x.view(-1, 784)).sum(dim=-1)
+    return -(logp_z - kl).mean()
 
 if __name__ == "__main__":
 
@@ -98,7 +97,7 @@ if __name__ == "__main__":
     print("DONE in {:.2f} sec".format(time.time() - start_time))
 
     # Set hyperparameters
-    model = VAE(batch_size=1, dim_z=100).to(device)
+    model = VAE(batch_size=1, L=100).to(device)
     optimizer = optim.Adam(model.parameters(), lr=0.0003)
     n_epochs=20
 
@@ -112,7 +111,8 @@ if __name__ == "__main__":
 
         for loader in ["Train", "Valid"]:
             start_time = time.time()
-            accumulated_loss = 0
+            train_epoch_loss = 0
+            valid_epoch_loss = 0
 
             if loader == "Train":
                 model.train()
@@ -125,12 +125,15 @@ if __name__ == "__main__":
                 recon_x, mu, log_sigma = model(x)
 
                 loss = ELBO(x, recon_x, mu, log_sigma)
-
+                print(loss)
                 if loader != "Valid":
-                    autograd.backward([-loss])
+                    loss.backward()
                     optimizer.step()
 
-                accumulated_loss += loss.item()
-
-
-            print("{} Phase. Average loss: {:.6f}".format(loader, loss.item()))
+                if loader != "Valid":
+                    train_epoch_loss += loss.item()
+                else:
+                    valid_epoch_loss += loss.item()
+                if idx == 10:
+                    break
+        print("Train Epoch loss: {:.6f} || Valud Epoch loss: {:.6f}".format(train_epoch_loss, train_epoch_loss))
