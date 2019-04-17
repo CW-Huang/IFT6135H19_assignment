@@ -13,7 +13,8 @@ import numpy as np
 import torch
 import matplotlib.pyplot as plt
 
-from samplers import distribution1, distribution2, distribution3, distribution4
+from samplers import distribution4, distribution3
+from discriminator import Discriminator, train, estimate
 
 # plot p0 and p1
 plt.figure()
@@ -38,19 +39,19 @@ plt.plot(xx, N(xx))
 
 #######--- INSERT YOUR CODE BELOW ---#######
 
+f0 = distribution3(512)
+f1 = distribution4(512)
 
-    # if args.question == 4:
+D = Discriminator(1, [32, 32, 32], 1)
+train(D, f0, f1, loss_metric='WD')
 
+discriminator_output = []
+estimated_density = []
 
-
-
-
-
-
-
-
-
-
+for x in xx:
+    out = D(torch.from_numpy(np.array([N(x)])).float())
+    discriminator_output.append(out)
+    estimated_density.append(N(x)*out/(1-out))
 
 
 ############### plotting things
@@ -59,16 +60,16 @@ plt.plot(xx, N(xx))
 
 
 
-    r = xx # evaluate xx using your discriminator; replace xx with the output
-    plt.figure(figsize=(8,4))
-    plt.subplot(1,2,1)
-    plt.plot(xx,r)
-    plt.title(r'$D(x)$')
+r = discriminator_output
+plt.figure(figsize=(8,4))
+plt.subplot(1,2,1)
+plt.plot(xx,r)
+plt.title(r'$D(x)$')
 
-    estimate = np.ones_like(xx)*0.2 # estimate the density of distribution4 (on xx) using the discriminator;
-                                    # replace "np.ones_like(xx)*0." with your estimate
-    plt.subplot(1,2,2)
-    plt.plot(xx,estimate)
-    plt.plot(f(torch.from_numpy(xx)).numpy(), d(torch.from_numpy(xx)).numpy()**(-1)*N(xx))
-    plt.legend(['Estimated','True'])
-    plt.title('Estimated vs True')
+estimate = estimated_density # estimate the density of distribution4 (on xx) using the discriminator;
+                                # replace "np.ones_like(xx)*0." with your estimate
+plt.subplot(1,2,2)
+plt.plot(xx,estimate)
+plt.plot(f(torch.from_numpy(xx)).numpy(), d(torch.from_numpy(xx)).numpy()**(-1)*N(xx))
+plt.legend(['Estimated','True'])
+plt.title('Estimated vs True')
