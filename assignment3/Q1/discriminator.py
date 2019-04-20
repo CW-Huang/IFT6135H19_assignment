@@ -53,10 +53,7 @@ def gradient_penalty(D, x, y):
     # Compute gradients of probability w.r.t interpolated examples
     grads = torch_grad(outputs=prob_z, inputs=z, grad_outputs=torch.ones(prob_z.size()), create_graph=True, retain_graph=True)[0]
 
-    # Compute norm of gradients
-    grads = grads.view(bs, -1)
-    grads_norm = grads.norm(2, dim=1)
-    return ((grads_norm - 1) ** 2).mean()
+    return torch.mean((torch.norm(grads, p=2, dim=1)-1)**2)
 
 
 def loss_JSD(x, y):
@@ -71,7 +68,7 @@ def loss_WD(x, y, l, gp):
     """
     return -(torch.mean(x) - torch.mean(y) - l*gp)
 
-def train(D, p, q, loss_metric='JSD', lmbd=35, n_epochs=80000):
+def train(D, p, q, loss_metric='JSD', lmbd=20, n_epochs=100000):
     """
     Function to train the discriminator
     """
@@ -96,11 +93,11 @@ def train(D, p, q, loss_metric='JSD', lmbd=35, n_epochs=80000):
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
-        if epoch % 5000 == 0:
+        if epoch % 10000 == 0:
             print("\tEpoch", epoch, "Loss: ", -loss.data.numpy())
 
 
-def predict(D, p, q, loss_metric='JSD', lmbd=15):
+def predict(D, p, q, loss_metric='JSD', lmbd=25):
     """
     Function to estimate JSD or WD of trained discriminator
     """
@@ -127,22 +124,22 @@ if __name__ == "__main__":
     jsd_list = []
     wd_list = []
     phis= np.around(np.arange(-1.0, 1.0, 0.1), 1)
-    # for phi in phis:
-    #     print(phi)
-    #     dist_p = samplers.distribution1(0, 512)
-    #     dist_q = samplers.distribution1(phi, 512)
-    #     D = Discriminator()
-    #     train(D, dist_p, dist_q)
-    #     y = predict(D, dist_p, dist_q)
-    #     print("Estimate: ",  y)
-    #     jsd_list.append(y)
-    #
-    # plt.scatter(phis, jsd_list)
-    # plt.title('{}'.format('JSD'))
-    # plt.xlabel('Estimated Jensen-Shannon Divergence')
-    # plt.ylabel('{\phi}')
-    # plt.savefig('JSD.png')
-    # plt.show()
+    for phi in phis:
+        print(phi)
+        dist_p = samplers.distribution1(0, 512)
+        dist_q = samplers.distribution1(phi, 512)
+        D = Discriminator()
+        train(D, dist_p, dist_q)
+        y = predict(D, dist_p, dist_q)
+        print("Estimate: ",  y)
+        jsd_list.append(y)
+
+    plt.scatter(phis, jsd_list)
+    plt.title('{}'.format('JSD'))
+    plt.xlabel('Estimated Jensen-Shannon Divergence')
+    plt.ylabel('{$\phi$}')
+    plt.savefig('JSD.png')
+    plt.show()
 
     # Q1.3 WD
     for phi in phis:
@@ -153,7 +150,7 @@ if __name__ == "__main__":
         train(D, dist_p, dist_q, loss_metric='WD')
         y = predict(D, dist_p, dist_q, loss_metric='WD')
         wd_list.append(y)
-
+        print('Estimae: ', y)
 
     plt.scatter(phis, wd_list)
     plt.title('{}'.format('WD'))
