@@ -3,9 +3,8 @@ import torch.nn as nn
 from torch.optim import SGD
 import torch.nn.functional as F
 from torch.autograd.variable import Variable
-from torch.autograd import grad as torch_grad
 import numpy as np
-import samplers
+from samplers import distribution1
 import math
 import matplotlib.pyplot as plt
 
@@ -37,86 +36,77 @@ class Discriminator(torch.nn.Module):
         else:
             return self.layers(x)
 
-def gradient_penalty(D, x, y):
-    # Sample from Uniform distribution
-    bs = x.size()[0]
-    dist_u = samplers.distribution2(batch_size=bs)
-    a = torch.from_numpy(next(dist_u)).float()
+    def gradient_penalty(self, x, y):
+        # Random weight term for interpolation between real and fake samples
+        a = torch.empty_like(x).uniform_(0, 1)
 
-    # Compute interpolated examples
-    z = a * x + (1 - a) * y
-    z = Variable(z, requires_grad=True)
+        # Compute interpolated examples
+        z = (a * x + ((1 - a) * y))
+        z.requires_grad = True
 
-    # Compute probability of interpolated examples
-    prob_z = D(z)
+        # Compute probability of interpolated examples
+        prob_z = self.forward(z)
 
-    # Compute gradients of probability w.r.t interpolated examples
-    grads = torch_grad(outputs=prob_z, inputs=z, grad_outputs=torch.ones(prob_z.size()), create_graph=True, retain_graph=True)[0]
+        # Compute gradients of probability w.r.t interpolated examples
+        grads = torch.autograd.grad(
+            outputs=prob_z,
+            inputs=z,
+            grad_outputs=torch.ones_like(prob_z),
+            create_graph=True,
+            only_inputs=True)[0]
+        return ((torch.norm(grads, p=2, dim=1) - 1)**2).mean()
 
-    return torch.mean((torch.norm(grads, p=2, dim=1)-1)**2)
+    def loss_JSD(self, x, y):
+        """
+        Implementation of Jensen-Shannon Divergence
+        """
+        return np.log(2) + (torch.mean(torch.log(self.forward(x)) / 2)) + (torch.mean(torch.log(1 - self.forward(y)) / 2))
+
+    def loss_WD(self, x, y, lmbd=0):
+        """
+        Implementation of Wasserstein Distance with gradient penalty.
+        """
+        if lmbd is 0:
+          gp = 0
+        else:
+          gp = self.gradient_penalty(x, y)
+
+        return torch.mean(self.forward(x)) - torch.mean(self.forward(y)) - lmbd*gp
+
+    def loss_func(self, x, y, metric='JSD', l=0 ):
+        """
+        Implementation of criterion to train the discriminator
+        """
+        return -self.loss_JSD(x, y) if metric == 'JSD' else -self.loss_WD(x, y, l)
 
 
-def loss_JSD(x, y):
+def train(D, p, q, loss_metric='JSD', lmbd=0, n_epochs=50000):
     """
-    Implementation of Jensen-Shannon Divergence
-    """
-    return -(np.log(2) + (torch.mean(torch.log(x)) / 2) + (torch.mean(torch.log(1 - y)) / 2))
-
-def loss_WD(x, y, l, gp):
-    """
-    Implementation of Wasserstein Distance with gradient penalty.
-    """
-    return -(torch.mean(x) - torch.mean(y) - l*gp)
-
-def train(D, p, q, loss_metric='JSD', lmbd=20, n_epochs=100000):
-    """
-    Function to train the discriminator
+    Function to train the discriminator using JSD or WD
     """
     optimizer=SGD(D.parameters(), lr=1e-3)
     D.train()
-
+    D.to(device)
     for epoch in range(n_epochs):
-        sample_x = torch.from_numpy(next(p)).float()
-        sample_x.to(device)
-        sample_y = torch.from_numpy(next(q)).float()
-        sample_y.to(device)
-
-        x = D(sample_x)
-        y = D(sample_y)
-
-        if loss_metric == 'JSD':
-            loss = loss_JSD(x, y)
-        elif loss_metric == 'WD':
-            gp = gradient_penalty(D, x, y)
-            loss = loss_WD(x, y, lmbd, gp)
-
+        x = torch.from_numpy(next(p)).float().to(device)
+        y = torch.from_numpy(next(q)).float().to(device)
         optimizer.zero_grad()
+        loss = D.loss_func(x, y, loss_metric, lmbd)
         loss.backward()
         optimizer.step()
         if epoch % 10000 == 0:
-            print("\tEpoch", epoch, "Loss: ", -loss.data.numpy())
+            print("\tEpoch", epoch, "Loss: ", -loss.item())
 
 
-def predict(D, p, q, loss_metric='JSD', lmbd=25):
+def predict(D, p, q, loss_metric='JSD', lmbd=0):
     """
     Function to estimate JSD or WD of trained discriminator
     """
     D.eval()
-    sample_x, sample_y = torch.from_numpy(next(p)).float(), torch.from_numpy(next(q)).float()
-    sample_x.to(device)
-    sample_y.to(device)
-
-    x, y = D(sample_x), D(sample_y)
-
-    if loss_metric == 'JSD':
-        loss = loss_JSD(x, y)
-    elif loss_metric == 'WD':
-        gp = gradient_penalty(D, x, y)
-        loss = loss_WD(x, y, lmbd, gp)
-
-    return -loss.data.cpu().numpy()
-
-
+    x = torch.from_numpy(next(p)).float().to(device)
+    y = torch.from_numpy(next(q)).float().to(device)
+    loss = D.loss_func(x, y, loss_metric)
+    return -loss.item()
 
 if __name__ == "__main__":
     print(device)
@@ -126,35 +116,35 @@ if __name__ == "__main__":
     phis= np.around(np.arange(-1.0, 1.0, 0.1), 1)
     for phi in phis:
         print(phi)
-        dist_p = samplers.distribution1(0, 512)
-        dist_q = samplers.distribution1(phi, 512)
+        dist_p = distribution1(0, 512)
+        dist_q = distribution1(phi, 512)
         D = Discriminator()
         train(D, dist_p, dist_q)
         y = predict(D, dist_p, dist_q)
-        print("Estimate: ",  y)
+        print("Estimate: ", y)
         jsd_list.append(y)
 
     plt.scatter(phis, jsd_list)
     plt.title('{}'.format('JSD'))
-    plt.xlabel('Estimated Jensen-Shannon Divergence')
-    plt.ylabel('{$\phi$}')
+    plt.ylabel('Estimated Jensen-Shannon Divergence')
+    plt.xlabel('$\phi$')
     plt.savefig('JSD.png')
     plt.show()
 
     # Q1.3 WD
     for phi in phis:
         print(phi)
-        dist_p = samplers.distribution1(0, 512)
-        dist_q = samplers.distribution1(phi, 512)
+        dist_p = distribution1(0, 512)
+        dist_q = distribution1(phi, 512)
         D = Discriminator(activ_func=None)
-        train(D, dist_p, dist_q, loss_metric='WD')
+        train(D, dist_p, dist_q, loss_metric='WD', lmbd=15)
         y = predict(D, dist_p, dist_q, loss_metric='WD')
         wd_list.append(y)
-        print('Estimae: ', y)
+        print('Estimate: ', y)
 
     plt.scatter(phis, wd_list)
     plt.title('{}'.format('WD'))
-    plt.xlabel('Estimated Wasserstein Distance')
-    plt.ylabel('{$\phi$}')
+    plt.ylabel('Estimated Wasserstein Distance')
+    plt.xlabel('$\phi$')
     plt.savefig('WD.png')
     plt.show()
