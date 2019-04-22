@@ -92,12 +92,12 @@ def calculate_fid_score(sample_feature_iterator,
     print('after iters')
     sample_features = np.asarray(sample_features, dtype=np.float64)
     mu_sample = np.mean(sample_features, axis=0, dtype=np.float64)
-    cov_sample = np.cov(sample_features)
+    cov_sample = np.cov(sample_features, rowvar=False)
 
     print('a')
     testset_features = np.asarray(testset_features, dtype=np.float64)
     mu_test = np.mean(testset_features, axis=0, dtype=np.float64)
-    cov_test = np.cov(testset_features)
+    cov_test = np.cov(testset_features, rowvar=False)
     
         #######################
 
