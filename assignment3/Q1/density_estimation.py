@@ -14,7 +14,7 @@ import torch
 import matplotlib.pyplot as plt
 
 from samplers import distribution4, distribution3
-from discriminator import Discriminator, train, estimate
+from discriminator import Discriminator, train, predict
 
 # plot p0 and p1
 plt.figure()
@@ -42,25 +42,21 @@ plt.plot(xx, N(xx))
 f0 = distribution3(512)
 f1 = distribution4(512)
 
-D = Discriminator(1, [32, 32, 32], 1)
-train(D, f0, f1, loss_metric='WD')
+D = Discriminator(1)
 
-discriminator_output = []
-estimated_density = []
+train(D, f1, f0, loss_metric='JSD')
 
-for x in xx:
-    out = D(torch.from_numpy(np.array([N(x)])).float())
-    discriminator_output.append(out)
-    estimated_density.append(N(x)*out/(1-out))
-
+x = torch.Tensor(xx).reshape(1000, 1)
+output = D(x)
+output = output.detach().numpy().reshape(-1)
+scaling_factor =  output / (1 - output)
+estimated_density = scaling_factor * N(xx)
 
 ############### plotting things
 ############### (1) plot the output of your trained discriminator
 ############### (2) plot the estimated density contrasted with the true density
 
-
-
-r = discriminator_output
+r = output
 plt.figure(figsize=(8,4))
 plt.subplot(1,2,1)
 plt.plot(xx,r)
@@ -73,3 +69,4 @@ plt.plot(xx,estimate)
 plt.plot(f(torch.from_numpy(xx)).numpy(), d(torch.from_numpy(xx)).numpy()**(-1)*N(xx))
 plt.legend(['Estimated','True'])
 plt.title('Estimated vs True')
+plt.savefig("estimated_vs_true.png")
