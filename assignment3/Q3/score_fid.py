@@ -82,7 +82,7 @@ def calculate_fid_score(sample_feature_iterator,
     sample_features  = []
     testset_features = []
 
-    print('before iter')
+    
 
     for i, data in enumerate(sample_feature_iterator):
 
@@ -90,12 +90,12 @@ def calculate_fid_score(sample_feature_iterator,
 
     for i, data in enumerate(testset_feature_iterator):
         testset_features  += [data]
-    print('after iters')
+    
     sample_features = np.asarray(sample_features, dtype=np.float64)
     mu_sample = np.mean(sample_features, axis=0, dtype=np.float64)
     cov_sample = np.cov(sample_features, rowvar=False)
 
-    print('a')
+    
     testset_features = np.asarray(testset_features, dtype=np.float64)
     mu_test = np.mean(testset_features, axis=0, dtype=np.float64)
     cov_test = np.cov(testset_features, rowvar=False)
@@ -108,11 +108,11 @@ def calculate_fid_score(sample_feature_iterator,
 
     # First term
     L2_mu_norm = mu_sample - mu_test
-    print('b')
+    
     # Second and third terms (inside Tr)
     sample_trace = np.trace(cov_sample)
     test_trace = np.trace(cov_test)
-    print('c')
+   
     # Third term
     cov_mul  = np.matmul(cov_sample, cov_test)
     temp = np.identity(cov_mul.shape[0])*5e-10
@@ -141,7 +141,7 @@ if __name__ == "__main__":
         quit = True
     if quit:
         exit()
-    print("Test")
+    
     classifier = torch.load(args.model, map_location='cpu')
     classifier.eval()
 
