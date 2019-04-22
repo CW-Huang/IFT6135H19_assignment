@@ -107,7 +107,7 @@ def calculate_fid_score(sample_feature_iterator,
         ######################
 
     # First term
-    L2_mu_norm = mu_sample - mu_test
+    L2_mu_norm = np.linalg.norm(mu_sample - mu_test)
     
     # Second and third terms (inside Tr)
     sample_trace = np.trace(cov_sample)
@@ -120,7 +120,7 @@ def calculate_fid_score(sample_feature_iterator,
     eps = np.identity(cov_mul.shape[0])*5e-10
     cov_mul = scipy.linalg.sqrtm(cov_mul + eps)
     trace_p = np.trace(cov_mul)
-    print('d')
+    
     return (L2_mu_norm + sample_trace + test_trace + 2*(trace_p))
 
 if __name__ == "__main__":
