@@ -4,7 +4,7 @@ import json
 import hashlib
 import argparse
 import time
-
+import numpy as np
 import torch
 import torch.utils.data
 from torch.utils.data import DataLoader
@@ -16,8 +16,14 @@ from torchvision.utils import save_image
 from dataset import MNIST
 from dataloader import get_data_loader
 
+# Ignore pytorch depracation warnings
+import warnings
+with warnings.catch_warnings():
+    warnings.filterwarnings("ignore",category=DeprecationWarning)
+
 # Using GPU if available
-device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+# device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+device = torch.device('cpu')
 
 class VAE(nn.Module):
     def __init__(self, L):
@@ -59,7 +65,8 @@ class VAE(nn.Module):
         mu, log_sigma = q_params[:,:self.L], q_params[:,self.L:]
         sigma = 1e-10 + torch.sqrt(torch.exp(log_sigma))
 
-        e = torch.randn(q_params.size(0), self.L, device=device)
+        e = torch.randn(q_params.size(0), self.L)
+        e = e.to(device)
         z = mu + sigma * e
         return z, mu, log_sigma, sigma
 
@@ -85,30 +92,17 @@ def ELBO(x, recon_x, mu, sigma):
     logpx_z = F.binary_cross_entropy(recon_x, x, reduction='sum')
     return logpx_z + kld
 
-if __name__ == "__main__":
 
-    # Load dataset
-    print("Loading datasets.....")
-    start_time = time.time()
-    train_set = MNIST("data", split="train")
-    valid_set = MNIST("data", split="valid")
-    train_loader = DataLoader(train_set, batch_size=64, shuffle=True)
-    valid_loader = DataLoader(valid_set, batch_size=64, shuffle=False)
-    print("DONE in {:.2f} sec".format(time.time() - start_time))
-
-    # Set hyperparameters
-    model = VAE(L=100).to(device)
-    optimizer = optim.Adam(model.parameters(), lr=3*1e-4, eps=1e-4)
-    n_epochs=20
-
+def train(model, train_loader, valid_loader, n_epochs=20,):
     dataloader = {"Train": train_loader,
                   "Valid": valid_loader}
+    optimizer = optim.Adam(model.parameters(), lr=3*1e-4, eps=1e-4)
 
     for epoch in range(n_epochs):
         epoch += 1
         # print("Epoch {} of {}".format(epoch, n_epochs))
-        train_epoch_loss = 0
-        valid_epoch_loss = 0
+        train_loss = 0
+        valid_loss = 0
 
         for loader in ["Train", "Valid"]:
             if loader != "Valid":
@@ -127,13 +121,123 @@ if __name__ == "__main__":
                     optimizer.zero_grad()
                     loss.backward()
                     optimizer.step()
-                    train_epoch_loss += loss.item()
+                    train_loss += loss.item()
                 else:
-                    valid_epoch_loss += loss.item()
+                    valid_loss += loss.item()
                 if idx % 100 == 0 and loader == "Train":
                     print('\tTrain ELBO: {:.6f}'.format(-loss.item() / x.size(0)))
 
             if loader != "Valid":
-                print("Epoch {} - Train ELBO: {:.6f}".format(epoch, -train_epoch_loss / len(dataloader[loader].dataset)))
+                train_epoch_loss = - train_loss /len(dataloader[loader].dataset)
+                print("Epoch {} - Train ELBO: {:.6f}".format(epoch, train_epoch_loss))
             else:
-                print("Epoch {} - Valid ELBO: {:.6f}".format(epoch, -valid_epoch_loss / len(dataloader[loader].dataset)))
+                valid_epoch_loss = - valid_loss / len(dataloader[loader].dataset)
+                print("Epoch {} - Valid ELBO: {:.6f}".format(epoch, -valid_epoch_loss))
+    return train_epoch_loss, valid_epoch_loss
+
+
+def importance_sampling(model, x, M=64, K=200, D=784, L=100):
+    with torch.no_grad():
+        x = x.to(device)
+        recon_x, mu, log_sigma, sigma = model(x)
+        recon_x = recon_x.to(device)
+        mu.to(device)
+        sigma.to(device)
+
+        logpx = torch.FloatTensor(K, M).to(device)
+        for i in range(K):
+            e = torch.rand(M, L).to(device)
+            z = mu + sigma * e
+            z.to(device)
+            recon_x = model.decode(z)
+
+            # p(x|z)
+            recon_x = recon_x.view(M, -1).to(device)
+            x = x.view(M, -1).to(device)
+            logpxz = F.binary_cross_entropy(recon_x, x, reduction='none'
+                ).sum(-1)
+
+            # q(z|x)
+            mu = mu.to(device)
+            sigma = sigma.to(device)
+            normal = torch.distributions.Normal(mu, sigma)
+            logqzx =  normal.log_prob(z).sum(-1)
+
+            # p(z)
+            mu_ = torch.zeros(L).to(device)
+            std_ = torch.ones(L).to(device)
+            normal = torch.distributions.Normal(mu_, std_)
+            logpz = normal.log_prob(z).sum(-1)
+
+            logpx[i, :]  = -logpxz - logqzx + logpz
+
+        max, _ = logpx.max(0)
+
+        # vector (log p(x_1), log p(x_2), ... , log p(x_M)) to return
+        estimated_logpx = torch.log(torch.exp(logpx - max).sum(0))+ max - np.log(K)
+
+    return estimated_logpx
+
+def eval_log_estimate(model, loader, M=64, K=200, D=784, L=100):
+    model.to(device)
+    with torch.no_grad():
+        sum_logpx = 0
+        for idx, x in enumerate(loader):
+            logpx = importance_sampling(model, x)
+            sum_logpx += logpx.sum()
+    estimated_sum_logpx = sum_logpx / len(loader.dataset)
+    return estimated_sum_logpx
+
+def eval_ELBO(model, loader):
+    model.to(device)
+    running_loss = 0
+    for idx, x in enumerate(loader):
+        x = x.to(device)
+        recon_x, mu, log_sigma, sigma = model(x)
+        loss = ELBO(x, recon_x, mu, sigma)
+        running_loss += loss.item()
+    return running_loss / len(loader.dataset)
+
+
+if __name__ == "__main__":
+
+    # Load dataset
+    print("Loading datasets.....")
+    start_time = time.time()
+    train_set = MNIST("data", split="train")
+    valid_set = MNIST("data", split="valid")
+    test_set = MNIST("data", split="test")
+    train_loader = DataLoader(train_set, batch_size=64, shuffle=True)
+    valid_loader = DataLoader(valid_set, batch_size=64, shuffle=False)
+    test_loader = DataLoader(test_set, batch_size=64, shuffle=False)
+    print("DONE in {:.2f} sec".format(time.time() - start_time))
+
+    do_training = False
+    do_importance_sampling = True
+
+    if do_training:
+        # Set hyperparameters
+        model = VAE(L=100).to(device)
+        t_loss, v_loss = train(model, valid_loader, test_loader)
+        torch.save(model.state_dict(), "vae.pth")
+
+    if do_importance_sampling:
+        print(device)
+        model = VAE(L=100)
+        model.load_state_dict(torch.load("vae.pth"))
+        model.eval()
+        print(len(valid_loader.dataset))
+
+        valid_elbo = eval_ELBO(model, valid_loader)
+        test_elbo = eval_ELBO(model, test_loader)
+        print('Valid ELBO                    :   {:.2f}'.format(
+            valid_elbo))
+        print('Test ELBO                     :   {:.2f}'.format(
+            test_elbo))
+
+        valid_esl = eval_log_estimate(model, valid_loader)
+        test_esl = eval_log_estimate(model, test_loader)
+        print('Valid Estimated Log-likelihood:   {:.2f}'.format(
+            valid_esl))
+        print('Test Estimated Log-likelihood :   {:.2f}'.format(
+            test_esl))
