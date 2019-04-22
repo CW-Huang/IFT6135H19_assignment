@@ -70,58 +70,25 @@ def extract_features(classifier, data_loader):
 
 def calculate_fid_score(sample_feature_iterator,
                         testset_feature_iterator):
-    # testset_feature_iterator is the Target distribution 'p'
-    # sample_feature_iterator is The sample distribution  'q'
+    feature_samples = []
+    test_samples = []
+    for x in sample_feature_iterator:
+        feature_samples.append(x)
+    for x in testset_feature_iterator:
+        test_samples.append(x)
 
-        #######################
-
-    #   1. Get mu and cov for both distribution
-
-        ######################
-
-    sample_features  = []
-    testset_features = []
-
+    feature_samples_mu = np.mean(feature_samples, axis=0)
+    test_samples_mu = np.mean(test_samples, axis=0)
     
-
-    for i, data in enumerate(sample_feature_iterator):
-
-        sample_features += [data]
-
-    for i, data in enumerate(testset_feature_iterator):
-        testset_features  += [data]
+    feature_samples_cov = np.cov(feature_samples, rowvar=False)
+    test_samples_cov = np.cov(test_samples, rowvar=False)
     
-    sample_features = np.asarray(sample_features, dtype=np.float64)
-    mu_sample = np.mean(sample_features, axis=0, dtype=np.float64)
-    cov_sample = np.cov(sample_features, rowvar=False)
-
+    cov, _ = linalg.sqrtm(test_samples_cov*feature_samples_cov, disp=False)
     
-    testset_features = np.asarray(testset_features, dtype=np.float64)
-    mu_test = np.mean(testset_features, axis=0, dtype=np.float64)
-    cov_test = np.cov(testset_features, rowvar=False)
+    trace = np.trace(test_samples_cov + feature_samples_cov + 2*cov)
+    norm = np.linalg.norm(test_samples_mu - feature_samples_mu)
     
-        #######################
-
-    #   2. Calculate FID ---> d2((μ_p,Σ_p),(μ_q,Σ_q))=||μ_p −μ_q||^2 +Tr(Σ_p +Σ_q −2(Σ_p Σ_q)^{1/2})
-    #                                where p is testset and q is sample
-        ######################
-
-    # First term
-    L2_mu_norm = np.linalg.norm(mu_sample - mu_test)
-    
-    # Second and third terms (inside Tr)
-    sample_trace = np.trace(cov_sample)
-    test_trace = np.trace(cov_test)
-   
-    # Third term
-    cov_mul  = np.matmul(cov_sample, cov_test)
-    temp = np.identity(cov_mul.shape[0])*5e-10
-    # Imaginary bit removal
-    eps = np.identity(cov_mul.shape[0])*5e-10
-    cov_mul = scipy.linalg.sqrtm(cov_mul + eps)
-    
-    
-    return (L2_mu_norm + np.trace(cov_test+cov_sample - 2*(cov_mul)))
+    return norm + trace
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
