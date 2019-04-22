@@ -119,9 +119,9 @@ def calculate_fid_score(sample_feature_iterator,
     # Imaginary bit removal
     eps = np.identity(cov_mul.shape[0])*5e-10
     cov_mul = scipy.linalg.sqrtm(cov_mul + eps)
-    trace_p = np.trace(cov_mul)
     
-    return (L2_mu_norm + sample_trace + test_trace + 2*(trace_p))
+    
+    return (L2_mu_norm + np.trace(cov_test+cov_sample - 2*(cov_mul)))
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
