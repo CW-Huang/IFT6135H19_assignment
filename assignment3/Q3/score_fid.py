@@ -4,6 +4,7 @@ import torchvision
 import torchvision.transforms as transforms
 import torch
 import classify_svhn
+import numpy as np
 from classify_svhn import Classifier
 
 SVHN_PATH = "svhn"
