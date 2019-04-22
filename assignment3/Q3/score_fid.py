@@ -81,7 +81,7 @@ def calculate_fid_score(sample_feature_iterator,
         ######################
 
     sample_features  = []
-    p_testset_features = []
+    testset_features = []
 
     
     for i, data in enumerate(sample_feature_iterator):
