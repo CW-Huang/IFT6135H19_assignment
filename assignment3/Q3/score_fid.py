@@ -5,7 +5,6 @@ import torchvision.transforms as transforms
 import torch
 import classify_svhn
 from classify_svhn import Classifier
-import numpy as np
 
 SVHN_PATH = "svhn"
 PROCESS_BATCH_SIZE = 32
@@ -14,14 +13,12 @@ PROCESS_BATCH_SIZE = 32
 def get_sample_loader(path, batch_size):
     """
     Loads data from `[path]/samples`
-
     - Ensure that path contains only one directory
       (This is due ot how the ImageFolder dataset loader
        works)
     - Ensure that ALL of your images are 32 x 32.
       The transform in this function will rescale it to
       32 x 32 if this is not the case.
-
     Returns an iterator over the tensors of the images
     of dimension (batch_size, 3, 32, 32)
     """
@@ -44,7 +41,6 @@ def get_test_loader(batch_size):
     """
     Downloads (if it doesn't already exist) SVHN test into
     [pwd]/svhn.
-
     Returns an iterator over the tensors of the images
     of dimension (batch_size, 3, 32, 32)
     """
@@ -74,7 +70,7 @@ def calculate_fid_score(sample_feature_iterator,
                         testset_feature_iterator):
     # testset_feature_iterator is the Target distribution 'p'
     # sample_feature_iterator is The sample distribution  'q'
-    
+
         #######################
 
     #   1. Get mu and cov for both distribution
@@ -85,11 +81,13 @@ def calculate_fid_score(sample_feature_iterator,
     testset_features = []
 
     print('before iter')
+
     for i, data in enumerate(sample_feature_iterator):
-        sample_features.append(data)
-    
+
+        sample_features += [data]
+
     for i, data in enumerate(testset_feature_iterator):
-        testset_features.append(data)
+        testset_features  += [data]
     print('after iters')
     sample_features = np.asarray(sample_features, dtype=np.float64)
     mu_sample = np.mean(sample_features, axis=0, dtype=np.float64)
@@ -114,12 +112,12 @@ def calculate_fid_score(sample_feature_iterator,
     test_trace = np.trace(cov_test)
 
     # Third term
-    cov_mul  = np.matmul(cov_sample, cov_test)  
+    cov_mul  = np.matmul(cov_sample, cov_test)
     temp = np.identity(cov_mul.shape[0])*5e-10
     # Imaginary bit removal
     eps = np.identity(cov_mul.shape[0])*5e-10
-    cov_mul = scipy.linalg.sqrtm(cov_mul + eps) 
-    trace_p = np.trace(cov_mul) 
+    cov_mul = scipy.linalg.sqrtm(cov_mul + eps)
+    trace_p = np.trace(cov_mul)
 
     return L2_mu_norm + sample_trace + test_trace + 2*(trace_p)
 
@@ -148,11 +146,10 @@ if __name__ == "__main__":
 
     sample_loader = get_sample_loader(args.directory,
                                       PROCESS_BATCH_SIZE)
-    
     sample_f = extract_features(classifier, sample_loader)
 
     test_loader = get_test_loader(PROCESS_BATCH_SIZE)
     test_f = extract_features(classifier, test_loader)
-    
+
     fid_score = calculate_fid_score(sample_f, test_f)
     print("FID score:", fid_score)

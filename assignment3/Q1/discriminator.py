@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 
 
 # Using GPU if available
-device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+device = torch.device('cpu')
 
 
 class Discriminator(torch.nn.Module):
@@ -80,7 +80,7 @@ class Discriminator(torch.nn.Module):
         return -self.loss_JSD(x, y) if metric == 'JSD' else -self.loss_WD(x, y, l)
 
 
-def train(D, p, q, loss_metric='JSD', lmbd=0, n_epochs=50000):
+def train(D, p, q, loss_metric='JSD', lmbd=0, n_epochs=75000):
     """
     Function to train the discriminator using JSD or WD
     """
