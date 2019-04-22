@@ -99,7 +99,7 @@ def calculate_fid_score(sample_feature_iterator,
     testset_features = np.asarray(testset_features, dtype=np.float64)
     mu_test = np.mean(testset_features, axis=0, dtype=np.float64)
     cov_test = np.cov(testset_features)
-
+    print('middle of fid score fct')
         #######################
 
     #   2. Calculate FID ---> d2((μ_p,Σ_p),(μ_q,Σ_q))=||μ_p −μ_q||^2 +Tr(Σ_p +Σ_q −2(Σ_p Σ_q)^{1/2})
@@ -153,6 +153,6 @@ if __name__ == "__main__":
 
     test_loader = get_test_loader(PROCESS_BATCH_SIZE)
     test_f = extract_features(classifier, test_loader)
-    print('testf: ', test_f)
+    
     fid_score = calculate_fid_score(sample_f, test_f)
     print("FID score:", fid_score)
