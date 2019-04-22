@@ -86,10 +86,10 @@ def calculate_fid_score(sample_feature_iterator,
 
     print('before iter')
     for i, data in enumerate(sample_feature_iterator):
-        sample_features += [data]
+        sample_features.append(data)
     
     for i, data in enumerate(testset_feature_iterator):
-        testset_features += [data]
+        testset_features.append(data)
     print('after iters')
     sample_features = np.asarray(sample_features, dtype=np.float64)
     mu_sample = np.mean(sample_features, axis=0, dtype=np.float64)
@@ -99,7 +99,7 @@ def calculate_fid_score(sample_feature_iterator,
     testset_features = np.asarray(testset_features, dtype=np.float64)
     mu_test = np.mean(testset_features, axis=0, dtype=np.float64)
     cov_test = np.cov(testset_features)
-    print('middle of fid score fct')
+    
         #######################
 
     #   2. Calculate FID ---> d2((μ_p,Σ_p),(μ_q,Σ_q))=||μ_p −μ_q||^2 +Tr(Σ_p +Σ_q −2(Σ_p Σ_q)^{1/2})
