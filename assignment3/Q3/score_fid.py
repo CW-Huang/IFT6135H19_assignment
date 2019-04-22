@@ -69,16 +69,58 @@ def extract_features(classifier, data_loader):
             for i in range(h.shape[0]):
                 yield h[i]
 
-
 def calculate_fid_score(sample_feature_iterator,
                         testset_feature_iterator):
-    """
-    To be implemented by you!
-    """
-    raise NotImplementedError(
-        "TO BE IMPLEMENTED."
-        "Part of Assignment 3 Quantitative Evaluations"
-    )
+    # testset_feature_iterator is the Target distribution 'p'
+    # sample_feature_iterator is The sample distribution  'q'
+    
+        #######################
+
+    #   1. Get mu and cov for both distribution
+
+        ######################
+
+    sample_features  = []
+    p_testset_features = []
+
+    
+    for i, data in enumerate(sample_feature_iterator):
+        sample_features += [data]
+    
+    for i, data in enumerate(testset_feature_iterator):
+        testset_features += [data]
+
+    sample_features = np.asarray(sample_features, dtype=np.float64)
+    mu_sample = np.mean(sample_features, axis=0, dtype=np.float64)
+    cov_sample = np.cov(sample_features)
+
+
+    testset_features = np.asarray(testset_features, dtype=np.float64)
+    mu_test = np.mean(testset_features, axis=0, dtype=np.float64)
+    cov_test = np.cov(testset_features)
+
+        #######################
+
+    #   2. Calculate FID ---> d2((μ_p,Σ_p),(μ_q,Σ_q))=||μ_p −μ_q||^2 +Tr(Σ_p +Σ_q −2(Σ_p Σ_q)^{1/2})
+    #                                where p is testset and q is sample
+        ######################
+
+    # First term
+    L2_mu_norm = mu_sample - mu_test
+
+    # Second and third terms (inside Tr)
+    sample_trace = np.trace(cov_sample)
+    test_trace = np.trace(cov_test)
+
+    # Third term
+    cov_mul  = np.matmul(cov_sample, cov_test)  
+    temp = np.identity(cov_mul.shape[0])*5e-10
+    # Imaginary bit removal
+    eps = np.identity(cov_mul.shape[0])*5e-10
+    cov_mul = scipy.linalg.sqrtm(cov_mul + eps) 
+    trace_p = np.trace(cov_mul) 
+
+    return L2_mu_norm + sample_trace + test_trace + 2*(trace_p)
 
 
 if __name__ == "__main__":
