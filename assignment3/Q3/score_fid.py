@@ -1,6 +1,7 @@
 import argparse
 import os
 import torchvision
+import scipy
 import torchvision.transforms as transforms
 import torch
 import classify_svhn
