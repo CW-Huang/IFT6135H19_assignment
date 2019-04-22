@@ -37,7 +37,10 @@ class Discriminator(torch.nn.Module):
             return self.layers(x)
 
     def gradient_penalty(self, x, y):
-        # Random weight term for interpolation between real and fake samples
+        """
+        Implementation of gradient penalty for WD
+        """
+        # Sample from Uniform distribution
         a = torch.empty_like(x).uniform_(0, 1)
 
         # Compute interpolated examples
