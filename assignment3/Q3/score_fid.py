@@ -84,13 +84,13 @@ def calculate_fid_score(sample_feature_iterator,
     sample_features  = []
     testset_features = []
 
-    
+    print('before iter')
     for i, data in enumerate(sample_feature_iterator):
         sample_features += [data]
     
     for i, data in enumerate(testset_feature_iterator):
         testset_features += [data]
-
+    print('after iters')
     sample_features = np.asarray(sample_features, dtype=np.float64)
     mu_sample = np.mean(sample_features, axis=0, dtype=np.float64)
     cov_sample = np.cov(sample_features)
