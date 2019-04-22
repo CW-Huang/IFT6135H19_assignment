@@ -1,4 +1,5 @@
 import argparse
+import argparse
 import os
 import torchvision
 import torchvision.transforms as transforms
@@ -6,8 +7,7 @@ import torch
 import classify_svhn
 from classify_svhn import Classifier
 import numpy as np
-from numpy.linalg import norm
-from scipy.linalg import sqrtm
+from scipy import linalg
 
 SVHN_PATH = "svhn"
 PROCESS_BATCH_SIZE = 32
@@ -71,36 +71,68 @@ def extract_features(classifier, data_loader):
 
 
 def calculate_fid_score(sample_feature_iterator,
-                        testset_feature_iterator, eps = 1e-7):
+                        testset_feature_iterator):
     """
-    To be implemented by you!
+    The following link is an example of implementation of
+    FID score computation in pytorch:
+        https://github.com/mseitzer/pytorch-fid
+    We used it has reference to make sure we were on the right track.
+    For exemple the author of the repo above included way to deal with
+    the (normal) presence of (very small e.g. 1e-18) imaginary
+    component of the output of linalg.sqrtm that computes the square
+    root of a matrix. These imaginary component comes from the fact
+    that computing the square root of a matrix requires to
+    do floating point arithmetic with imarinary component. So any number
+    smaller than some machine-epsilon can just be interpreted as a true zero.
     """
-    p = []
-    q = []
-    for i in testset_feature_iterator:
-        p.append(i)
-    for i in sample_feature_iterator:
-        q.append(i)
-    
-    p = np.array(p)
-    q = np.array(q)
 
-    mu_p = np.mean(p, axis = 0)
-    mu_q = np.mean(q, axis = 0)
+    sample_features_list  = []
+    testset_features_list = []
 
-    cov_p = np.cov(p, rowvar = False)
-    cov_q = np.cov(q, rowvar = False)
+    # stats for samples
+    for i,h in enumerate(sample_feature_iterator):
+        sample_features_list += [h]
 
-    FID = norm(mu_p - mu_q)**2 + np.trace(cov_p + cov_q - 2*(sqrtm(np.matmul(cov_p, cov_q) + eps*np.identity(512))))
+    sample_features = np.asarray(sample_features_list, dtype=np.float64)
+    avg_sample = np.mean(sample_features, axis=0, dtype=np.float64)
+    cov_sample = np.cov(sample_features,rowvar=False)
 
-    return FID
+    # stats for test
+    for i,h in enumerate(testset_feature_iterator):
+        testset_features_list += [h]
+
+    testset_features = np.asarray(testset_features_list, dtype=np.float64)
+    avg_test = np.mean(testset_features, axis=0, dtype=np.float64)
+    cov_test = np.cov(testset_features,rowvar=False)
+
+    # mu should be 512, cov should be 512 x 512
+    # print( "mu  shape " , avg_test.shape )
+    # print( "cov shape " , cov_test.shape )
+
+    #
+    delta              = avg_sample - avg_test
+    cov_sample_test, _ = linalg.sqrtm(cov_sample.dot(cov_test), disp=False)
+
+    # imaginary component, we only care about the diagonal component
+    # if they are close enough to zero, we set them to true zero
+    if np.iscomplexobj(cov_sample_test): # check if it has an imaginary part (even zero)
+        if not np.allclose(np.diagonal(cov_sample_test).imag, 0, atol=1e-5):
+            # above this threshold, warn user
+            print("Imaginary component too high in computation, might be an issue")
+        cov_sample_test = cov_sample_test.real
+
+    ##################################################
+
+    FID_score = delta.dot(delta) + np.trace(cov_sample) + np.trace(cov_test) - 2 * np.trace(cov_sample_test)
+    return FID_score
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description='Score a directory of images with the FID score.')
     parser.add_argument('--model', type=str, default="svhn_classifier.pt",
                         help='Path to feature extraction model.')
-    parser.add_argument('directory', type=str, default="fid/",
+    parser.add_argument('directory', type=str,
                         help='Path to image directory')
     args = parser.parse_args()
 
