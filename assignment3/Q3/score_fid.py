@@ -83,7 +83,7 @@ def calculate_fid_score(sample_feature_iterator,
     feature_samples_cov = np.cov(feature_samples, rowvar=False)
     test_samples_cov = np.cov(test_samples, rowvar=False)
     
-    cov, _ = linalg.sqrtm(test_samples_cov*feature_samples_cov, disp=False)
+    cov, _ = scipy.linalg.sqrtm(test_samples_cov*feature_samples_cov, disp=False)
     
     trace = np.trace(test_samples_cov + feature_samples_cov + 2*cov)
     norm = np.linalg.norm(test_samples_mu - feature_samples_mu)
