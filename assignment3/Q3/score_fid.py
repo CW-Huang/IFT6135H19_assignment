@@ -5,6 +5,7 @@ import torchvision.transforms as transforms
 import torch
 import classify_svhn
 from classify_svhn import Classifier
+import numpy as np
 
 SVHN_PATH = "svhn"
 PROCESS_BATCH_SIZE = 32
