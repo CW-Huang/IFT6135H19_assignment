@@ -148,11 +148,11 @@ if __name__ == "__main__":
 
     sample_loader = get_sample_loader(args.directory,
                                       PROCESS_BATCH_SIZE)
-    print('between loaders')
+    
     sample_f = extract_features(classifier, sample_loader)
 
     test_loader = get_test_loader(PROCESS_BATCH_SIZE)
     test_f = extract_features(classifier, test_loader)
-
+    print('testf: ', test_f)
     fid_score = calculate_fid_score(sample_f, test_f)
     print("FID score:", fid_score)
