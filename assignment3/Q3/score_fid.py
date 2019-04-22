@@ -94,7 +94,7 @@ def calculate_fid_score(sample_feature_iterator,
     mu_sample = np.mean(sample_features, axis=0, dtype=np.float64)
     cov_sample = np.cov(sample_features)
 
-
+    print('a')
     testset_features = np.asarray(testset_features, dtype=np.float64)
     mu_test = np.mean(testset_features, axis=0, dtype=np.float64)
     cov_test = np.cov(testset_features)
@@ -107,11 +107,11 @@ def calculate_fid_score(sample_feature_iterator,
 
     # First term
     L2_mu_norm = mu_sample - mu_test
-
+    print('b')
     # Second and third terms (inside Tr)
     sample_trace = np.trace(cov_sample)
     test_trace = np.trace(cov_test)
-
+    print('c')
     # Third term
     cov_mul  = np.matmul(cov_sample, cov_test)
     temp = np.identity(cov_mul.shape[0])*5e-10
@@ -119,9 +119,8 @@ def calculate_fid_score(sample_feature_iterator,
     eps = np.identity(cov_mul.shape[0])*5e-10
     cov_mul = scipy.linalg.sqrtm(cov_mul + eps)
     trace_p = np.trace(cov_mul)
-
-    return L2_mu_norm + sample_trace + test_trace + 2*(trace_p)
-
+    print('d')
+    return (L2_mu_norm + sample_trace + test_trace + 2*(trace_p))
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
