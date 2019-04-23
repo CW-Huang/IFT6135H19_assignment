@@ -22,8 +22,8 @@ with warnings.catch_warnings():
     warnings.filterwarnings("ignore",category=DeprecationWarning)
 
 # Using GPU if available
-# device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
-device = torch.device('cpu')
+device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+# device = torch.device('cpu')
 
 class VAE(nn.Module):
     def __init__(self, L):
@@ -65,8 +65,7 @@ class VAE(nn.Module):
         mu, log_sigma = q_params[:,:self.L], q_params[:,self.L:]
         sigma = 1e-10 + torch.sqrt(torch.exp(log_sigma))
 
-        e = torch.randn(q_params.size(0), self.L)
-        e = e.to(device)
+        e = torch.randn(q_params.size(0), self.L, device=device)
         z = mu + sigma * e
         return z, mu, log_sigma, sigma
 
@@ -77,15 +76,13 @@ class VAE(nn.Module):
 
     def forward(self, x):
         q_params = self.encode(x)
+        q_params.to(device)
         z, mu, log_sigma, sigma = self.reparameterize(q_params)
         recon_x = self.decode(z)
         return recon_x, mu, log_sigma, sigma
 
 
 def ELBO(x, recon_x, mu, sigma):
-    """
-    Function that computes the negative ELBO
-    """
     # Compute KL Divergence
     kld = 0.5 * torch.sum(-1 - torch.log(sigma ** 2) + mu ** 2 + sigma ** 2 )
     # Compute reconstruction error
@@ -100,7 +97,6 @@ def train(model, train_loader, valid_loader, n_epochs=20,):
 
     for epoch in range(n_epochs):
         epoch += 1
-        # print("Epoch {} of {}".format(epoch, n_epochs))
         train_loss = 0
         valid_loss = 0
 
@@ -133,22 +129,22 @@ def train(model, train_loader, valid_loader, n_epochs=20,):
             else:
                 valid_epoch_loss = - valid_loss / len(dataloader[loader].dataset)
                 print("Epoch {} - Valid ELBO: {:.6f}".format(epoch, -valid_epoch_loss))
-    return train_epoch_loss, valid_epoch_loss
+    return -train_epoch_loss, -valid_epoch_loss
 
 
-def importance_sampling(model, x, M=64, K=200, D=784, L=100):
+def importance_sampling(model, x, K=200, L=100):
+    # mini-batch size
+    M = x.size(0)
     with torch.no_grad():
-        x = x.to(device)
         recon_x, mu, log_sigma, sigma = model(x)
         recon_x = recon_x.to(device)
-        mu.to(device)
-        sigma.to(device)
+        mu = mu.to(device)
+        sigma = sigma.to(device)
 
         logpx = torch.FloatTensor(K, M).to(device)
         for i in range(K):
             e = torch.rand(M, L).to(device)
             z = mu + sigma * e
-            z.to(device)
             recon_x = model.decode(z)
 
             # p(x|z)
@@ -171,18 +167,17 @@ def importance_sampling(model, x, M=64, K=200, D=784, L=100):
 
             logpx[i, :]  = -logpxz - logqzx + logpz
 
-        max, _ = logpx.max(0)
-
-        # vector (log p(x_1), log p(x_2), ... , log p(x_M)) to return
-        estimated_logpx = torch.log(torch.exp(logpx - max).sum(0))+ max - np.log(K)
+        logpx_max = logpx.max(0)[0]
+        estimated_logpx = torch.log(torch.exp(logpx - logpx_max[0])).sum(0) + logpx_max[0] - torch.log(torch.FloatTensor([K])).to(device)
 
     return estimated_logpx
 
-def eval_log_estimate(model, loader, M=64, K=200, D=784, L=100):
+def eval_log_estimate(model, loader, K=200, L=100):
     model.to(device)
+    sum_logpx = 0
     with torch.no_grad():
-        sum_logpx = 0
         for idx, x in enumerate(loader):
+            x = x.to(device)
             logpx = importance_sampling(model, x)
             sum_logpx += logpx.sum()
     estimated_sum_logpx = sum_logpx / len(loader.dataset)
@@ -191,13 +186,13 @@ def eval_log_estimate(model, loader, M=64, K=200, D=784, L=100):
 def eval_ELBO(model, loader):
     model.to(device)
     running_loss = 0
-    for idx, x in enumerate(loader):
-        x = x.to(device)
-        recon_x, mu, log_sigma, sigma = model(x)
-        loss = ELBO(x, recon_x, mu, sigma)
-        running_loss += loss.item()
+    with torch.no_grad():
+        for idx, x in enumerate(loader):
+            x = x.to(device)
+            recon_x, mu, log_sigma, sigma = model(x)
+            loss = ELBO(x, recon_x, mu, sigma)
+            running_loss += loss.item()
     return running_loss / len(loader.dataset)
-
 
 if __name__ == "__main__":
 
@@ -207,37 +202,34 @@ if __name__ == "__main__":
     train_set = MNIST("data", split="train")
     valid_set = MNIST("data", split="valid")
     test_set = MNIST("data", split="test")
-    train_loader = DataLoader(train_set, batch_size=64, shuffle=True)
-    valid_loader = DataLoader(valid_set, batch_size=64, shuffle=False)
-    test_loader = DataLoader(test_set, batch_size=64, shuffle=False)
+    train_loader = DataLoader(train_set, batch_size=32, shuffle=True)
+    valid_loader = DataLoader(valid_set, batch_size=32, shuffle=False)
+    test_loader = DataLoader(test_set, batch_size=32, shuffle=False)
     print("DONE in {:.2f} sec".format(time.time() - start_time))
 
     do_training = False
-    do_importance_sampling = True
+    do_testing = True
 
     if do_training:
         # Set hyperparameters
-        model = VAE(L=100).to(device)
+        model = VAE(L=100)
         t_loss, v_loss = train(model, valid_loader, test_loader)
         torch.save(model.state_dict(), "vae.pth")
 
-    if do_importance_sampling:
+    if do_testing:
         print(device)
         model = VAE(L=100)
         model.load_state_dict(torch.load("vae.pth"))
+        model.to(device)
         model.eval()
         print(len(valid_loader.dataset))
 
         valid_elbo = eval_ELBO(model, valid_loader)
         test_elbo = eval_ELBO(model, test_loader)
-        print('Valid ELBO                    :   {:.2f}'.format(
-            valid_elbo))
-        print('Test ELBO                     :   {:.2f}'.format(
-            test_elbo))
+        print('Valid ELBO                    :   {:.4f}'.format(-valid_elbo))
+        print('Test ELBO                     :   {:.4f}'.format(-test_elbo))
 
         valid_esl = eval_log_estimate(model, valid_loader)
         test_esl = eval_log_estimate(model, test_loader)
-        print('Valid Estimated Log-likelihood:   {:.2f}'.format(
-            valid_esl))
-        print('Test Estimated Log-likelihood :   {:.2f}'.format(
-            test_esl))
+        print('Valid Estimated Log-likelihood:   {:.4f}'.format(-valid_esl))
+        print('Test Estimated Log-likelihood :   {:.4f}'.format(-test_esl))
